@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
+set -e  # Exit on errors
 
-# Exit on error
-set -o errexit
-
-# Install Python dependencies
+echo "---> Installing dependencies"
 pip install -r requirements.txt
 
-# Initialize the repository if needed
-if [ ! -d ".git" ]; then
-    git init
-    git remote add origin $REPO_URL
-fi
-
-# Fetch the latest code
-git fetch origin $BRANCH
-
-# Reset to the latest commit
-git reset --hard origin/$BRANCH
+echo "---> Pulling latest code"
+git pull origin main
