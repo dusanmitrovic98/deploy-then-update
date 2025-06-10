@@ -5,53 +5,260 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Central Management Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css" rel="stylesheet"/>
   <style>
-    body { background: #f8f9fa; }
-    .dashboard { max-width: 500px; margin: 2rem auto; }
-    .hidden { display: none; }
+    body {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: 'Segoe UI', 'Liberation Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .vscode-shell {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+    .vscode-sidebar {
+      width: 56px;
+      background: #2c2c32;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px;
+      border-right: 1px solid #222;
+    }
+    .vscode-sidebar .codicon {
+      font-size: 24px;
+      color: #c5c5c5;
+      margin: 18px 0;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .vscode-sidebar .codicon.active, .vscode-sidebar .codicon:hover {
+      color: #3794ff;
+    }
+    .vscode-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+    }
+    .vscode-titlebar {
+      height: 36px;
+      background: #23232b;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid #222;
+      font-size: 15px;
+      color: #d4d4d4;
+      letter-spacing: 0.5px;
+    }
+    .vscode-tabs {
+      display: flex;
+      background: #23232b;
+      border-bottom: 1px solid #222;
+      height: 32px;
+      align-items: end;
+    }
+    .vscode-tab {
+      padding: 0 18px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      color: #d4d4d4;
+      background: #23232b;
+      border-right: 1px solid #222;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+    .vscode-tab.active {
+      background: #1e1e1e;
+      color: #fff;
+      border-bottom: 2px solid #3794ff;
+    }
+    .vscode-tab .codicon {
+      margin-right: 6px;
+      font-size: 16px;
+    }
+    .vscode-content {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+      background: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+    }
+    .vscode-panel {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 24px 32px 16px 32px;
+      flex: 1;
+      overflow-y: auto;
+      min-width: 0;
+    }
+    .vscode-panel h3 {
+      color: #fff;
+      font-size: 1.2rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+    .vscode-panel label, .vscode-panel .form-label {
+      color: #d4d4d4;
+    }
+    .vscode-panel .form-control, .vscode-panel textarea {
+      background: #23232b;
+      color: #d4d4d4;
+      border: 1px solid #333;
+    }
+    .vscode-panel .btn {
+      background: #23232b;
+      color: #d4d4d4;
+      border: 1px solid #333;
+      margin-right: 8px;
+    }
+    .vscode-panel .btn-primary, .vscode-panel .btn-success, .vscode-panel .btn-warning, .vscode-panel .btn-info, .vscode-panel .btn-danger {
+      color: #fff;
+      border: none;
+    }
+    .vscode-panel .btn-primary { background: #3794ff; }
+    .vscode-panel .btn-success { background: #388a34; }
+    .vscode-panel .btn-warning { background: #b89500; }
+    .vscode-panel .btn-info { background: #007acc; }
+    .vscode-panel .btn-danger { background: #c74e39; }
+    .vscode-panel .btn-outline-secondary { color: #d4d4d4; border: 1px solid #555; background: none; }
+    .vscode-panel .list-group-item {
+      background: #23232b;
+      color: #d4d4d4;
+      border: 1px solid #333;
+    }
+    .vscode-terminal {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      font-family: 'Fira Mono', 'Consolas', 'monospace';
+      padding: 12px;
+      height: 220px;
+      overflow: auto;
+      border-radius: 4px;
+      border: 1px solid #23232b;
+      margin-bottom: 8px;
+      white-space: pre;
+    }
+    .vscode-terminal-input {
+      background: #23232b;
+      color: #d4d4d4;
+      border: 1px solid #333;
+      font-family: 'Fira Mono', 'Consolas', 'monospace';
+      padding: 6px 10px;
+      border-radius: 3px;
+      width: 100%;
+      margin-right: 8px;
+    }
+    .vscode-panel .btn-close {
+      filter: invert(1);
+    }
+    .vscode-panel .toast {
+      min-width: 220px;
+    }
+    .vscode-panel .form-control:focus, .vscode-panel textarea:focus, .vscode-terminal-input:focus {
+      border-color: #3794ff;
+      outline: none;
+      box-shadow: 0 0 0 1px #3794ff;
+    }
+    @media (max-width: 700px) {
+      .vscode-panel { padding: 12px 4px 8px 4px; }
+    }
   </style>
 </head>
 <body>
-  <div class="dashboard card p-4 shadow">
-    <h2 class="mb-3">Central Management</h2>
-    <div id="auth-section">
-      <form onsubmit="login(); return false;">
-        <input type="password" id="secretKey" class="form-control mb-2" placeholder="Enter Secret Key"/>
-        <button class="btn btn-primary w-100" type="submit">Login</button>
-      </form>
-      <div id="auth-error" class="text-danger mt-2 hidden">Invalid key. Try again.</div>
+  <div class="vscode-shell">
+    <div class="vscode-sidebar">
+      <span class="codicon codicon-home active" title="Dashboard" onclick="switchTab('dashboard')"></span>
+      <span class="codicon codicon-settings-gear" title="Config" onclick="switchTab('config')"></span>
+      <span class="codicon codicon-file" title="Files" onclick="switchTab('files')"></span>
+      <span class="codicon codicon-terminal" title="Terminal" onclick="switchTab('terminal')"></span>
+      <span class="codicon codicon-sign-out" title="Logout" onclick="logout()"></span>
     </div>
-    <div id="main-section" class="hidden">
-      <div class="mb-3">
-        <button class="btn btn-success me-2" onclick="apiAction('run')">Run</button>
-        <button class="btn btn-warning me-2" onclick="apiAction('stop')">Stop</button>
-        <button class="btn btn-info me-2" onclick="apiAction('restart')">Restart</button>
-        <button class="btn btn-secondary" onclick="apiAction('update')">Update</button>
+    <div class="vscode-main">
+      <div class="vscode-titlebar"><span class="codicon codicon-rocket"></span>&nbsp;Central Management Dashboard</div>
+      <div class="vscode-tabs">
+        <div class="vscode-tab active" id="tab-dashboard" onclick="switchTab('dashboard')"><span class="codicon codicon-home"></span>Dashboard</div>
+        <div class="vscode-tab" id="tab-config" onclick="switchTab('config')"><span class="codicon codicon-settings-gear"></span>Config</div>
+        <div class="vscode-tab" id="tab-files" onclick="switchTab('files')"><span class="codicon codicon-file"></span>Files</div>
+        <div class="vscode-tab" id="tab-terminal" onclick="switchTab('terminal')"><span class="codicon codicon-terminal"></span>Terminal</div>
       </div>
-      <div id="status" class="mb-3"></div>
-      <h5>config.json</h5>
-      <textarea id="configEditor" class="form-control mb-2" rows="8"></textarea>
-      <button class="btn btn-primary btn-sm mb-3" onclick="saveConfig()">Save Config</button>
-      <h5>Scripts</h5>
-      <div id="scriptsList"></div>
-      <h5>File Manager</h5>
-      <div id="fileList" class="mb-2" style="max-height:120px;overflow:auto;"></div>
-      <form class="d-flex mb-2" onsubmit="uploadFile(event)">
-        <input type="file" id="fileInput" class="form-control me-2" />
-        <button class="btn btn-outline-primary" type="submit">Upload</button>
-      </form>
-      <h5>Simulated Terminal</h5>
-      <div id="terminal" style="background:#222;color:#eee;font-family:monospace;padding:10px;height:200px;overflow:auto;white-space:pre;">Loading...</div>
-      <form class="d-flex mt-2" onsubmit="sendTerminal(event)">
-        <input id="terminalInput" class="form-control me-2" placeholder="Enter command" autocomplete="off" />
-        <button class="btn btn-dark" type="submit">Run</button>
-        <button class="btn btn-outline-secondary ms-2" type="button" onclick="loadTerminal()">Refresh</button>
-      </form>
-      <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+      <div class="vscode-content">
+        <div class="vscode-panel" id="panel-dashboard">
+          <h3>Quick Actions</h3>
+          <button class="btn btn-success me-2" onclick="apiAction('run')" data-label="Run">Run</button>
+          <button class="btn btn-warning me-2" onclick="apiAction('stop')" data-label="Stop">Stop</button>
+          <button class="btn btn-info me-2" onclick="apiAction('restart')" data-label="Restart">Restart</button>
+          <button class="btn btn-secondary" onclick="apiAction('update')" data-label="Update">Update</button>
+          <div id="status" class="mt-3"></div>
+          <h3 class="mt-4">Scripts</h3>
+          <div id="scriptsList"></div>
+        </div>
+        <div class="vscode-panel" id="panel-config" style="display:none;">
+          <h3>Edit config.json</h3>
+          <textarea id="configEditor" class="form-control mb-2" rows="10" spellcheck="false"></textarea>
+          <button class="btn btn-primary btn-sm mb-3" onclick="saveConfig()" data-label="Save Config">Save Config</button>
+        </div>
+        <div class="vscode-panel" id="panel-files" style="display:none;">
+          <h3>File Manager</h3>
+          <div id="fileList" class="mb-2" style="max-height:180px;overflow:auto;"></div>
+          <form class="d-flex mb-2" onsubmit="uploadFile(event)">
+            <input type="file" id="fileInput" class="form-control me-2" />
+            <button class="btn btn-outline-primary" type="submit" data-label="Upload">Upload</button>
+          </form>
+        </div>
+        <div class="vscode-panel" id="panel-terminal" style="display:none;">
+          <h3>Simulated Terminal</h3>
+          <div id="terminal" class="vscode-terminal">Loading...</div>
+          <form class="d-flex mt-2" onsubmit="sendTerminal(event)">
+            <input id="terminalInput" class="vscode-terminal-input" placeholder="Enter command" autocomplete="off" />
+            <button class="btn btn-dark" type="submit" data-label="Run">Run</button>
+            <button class="btn btn-outline-secondary ms-2" type="button" onclick="loadTerminal()">Refresh</button>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
+  <div id="auth-section" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1e1e1e;z-index:10000;display:flex;align-items:center;justify-content:center;">
+    <form onsubmit="login(); return false;" class="card p-4 shadow" style="min-width:320px;background:#23232b;">
+      <div class="mb-2" style="color:#fff;font-size:1.2rem;text-align:center;">Login</div>
+      <input type="password" id="secretKey" class="form-control mb-2" placeholder="Enter Secret Key"/>
+      <button class="btn btn-primary w-100" type="submit">Login</button>
+      <div id="auth-error" class="text-danger mt-2 hidden">Invalid key. Try again.</div>
+    </form>
   </div>
   <script>
     const API = location.origin;
+    function switchTab(tab) {
+      // Tabs
+      ['dashboard','config','files','terminal'].forEach(t => {
+        document.getElementById('panel-' + t).style.display = (t === tab) ? '' : 'none';
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+      });
+      // Sidebar
+      document.querySelectorAll('.vscode-sidebar .codicon').forEach((el, i) => {
+        el.classList.toggle('active',
+          (tab === 'dashboard' && i === 0) ||
+          (tab === 'config' && i === 1) ||
+          (tab === 'files' && i === 2) ||
+          (tab === 'terminal' && i === 3)
+        );
+      });
+    }
+    function showMainUI() {
+      document.getElementById('auth-section').style.display = 'none';
+      document.querySelector('.vscode-shell').style.display = 'flex';
+    }
+    function hideMainUI() {
+      document.getElementById('auth-section').style.display = 'flex';
+      document.querySelector('.vscode-shell').style.display = 'none';
+    }
     function login() {
       const key = document.getElementById('secretKey').value;
       localStorage.setItem('secretKey', key);
@@ -59,8 +266,7 @@
     }
     function logout() {
       localStorage.removeItem('secretKey');
-      document.getElementById('main-section').classList.add('hidden');
-      document.getElementById('auth-section').classList.remove('hidden');
+      hideMainUI();
     }
     function checkAuth() {
       fetch(API + '/run', {
@@ -68,15 +274,147 @@
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
       }).then(r => {
         if (r.status === 401 || r.status === 403) throw new Error();
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-section').classList.remove('hidden');
+        showMainUI();
         document.getElementById('auth-error').classList.add('hidden');
         loadConfig();
       }).catch(() => {
         document.getElementById('auth-error').classList.remove('hidden');
       });
     }
+    // --- Utility Functions ---
+    function showToast(message, type = 'info') {
+      let toast = document.createElement('div');
+      toast.className = `toast align-items-center text-bg-${type} border-0 show position-fixed top-0 end-0 m-3`;
+      toast.style.zIndex = 9999;
+      toast.innerHTML = `<div class='d-flex'><div class='toast-body'>${message}</div><button type='button' class='btn-close btn-close-white me-2 m-auto' data-bs-dismiss='toast'></button></div>`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+      toast.querySelector('.btn-close').onclick = () => toast.remove();
+    }
+    function setLoading(el, loading) {
+      if (loading) {
+        el.disabled = true;
+        el.innerHTML = `<span class='spinner-border spinner-border-sm'></span>`;
+      } else {
+        el.disabled = false;
+        el.innerHTML = el.dataset.label;
+      }
+    }
+    // --- Terminal Improvements ---
+    let terminalHistory = [];
+    let terminalHistoryIndex = -1;
+    function loadTerminal() {
+      fetch(API + '/terminal/logs', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(data => {
+        const logs = (data.logs||[]).join('\n');
+        const termDiv = document.getElementById('terminal');
+        termDiv.innerText = logs;
+        termDiv.scrollTop = termDiv.scrollHeight;
+      })
+      .catch(() => showToast('Failed to load terminal logs', 'danger'));
+    }
+    function sendTerminal(e) {
+      e.preventDefault();
+      let input = document.getElementById('terminalInput');
+      let cmd = input.value.trim();
+      input.value = '';
+      if (!cmd) return;
+      if (cmd === 'cls' || cmd === 'clear') {
+        document.getElementById('terminal').innerText = '';
+        terminalHistory.push(cmd);
+        terminalHistoryIndex = terminalHistory.length;
+        return;
+      }
+      terminalHistory.push(cmd);
+      terminalHistoryIndex = terminalHistory.length;
+      let runBtn = e.submitter;
+      if (runBtn) setLoading(runBtn, true);
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({cmd: cmd})
+      })
+      .then(() => loadTerminal())
+      .catch(() => showToast('Terminal command failed', 'danger'))
+      .finally(() => { if (runBtn) setLoading(runBtn, false); });
+    }
+    document.getElementById('terminalInput').addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowUp') {
+        if (terminalHistoryIndex > 0) {
+          terminalHistoryIndex--;
+          this.value = terminalHistory[terminalHistoryIndex] || '';
+        }
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        if (terminalHistoryIndex < terminalHistory.length - 1) {
+          terminalHistoryIndex++;
+          this.value = terminalHistory[terminalHistoryIndex] || '';
+        } else {
+          terminalHistoryIndex = terminalHistory.length;
+          this.value = '';
+        }
+        e.preventDefault();
+      }
+    });
+    // --- Config Editor Improvements ---
+    function saveConfig() {
+      let btn = event.target;
+      setLoading(btn, true);
+      let val = document.getElementById('configEditor').value;
+      try {
+        JSON.parse(val);
+      } catch {
+        showToast('Invalid JSON in config', 'danger');
+        setLoading(btn, false);
+        return;
+      }
+      fetch(API + '/config', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
+          'Content-Type': 'application/json'
+        },
+        body: val
+      })
+      .then(() => { showToast('Config saved', 'success'); loadConfig(); })
+      .catch(() => showToast('Failed to save config', 'danger'))
+      .finally(() => setLoading(btn, false));
+    }
+    // --- File Manager Improvements ---
+    function uploadFile(e) {
+      e.preventDefault();
+      let file = document.getElementById('fileInput').files[0];
+      if (!file) return showToast('No file selected', 'warning');
+      let btn = e.submitter;
+      setLoading(btn, true);
+      fetch(API + '/files/' + encodeURIComponent(file.name), {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') },
+        body: file
+      })
+      .then(() => { showToast('File uploaded', 'success'); loadFiles(); })
+      .catch(() => showToast('File upload failed', 'danger'))
+      .finally(() => setLoading(btn, false));
+    }
+    function deleteFile(name) {
+      if (!confirm('Delete file ' + name + '?')) return;
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(() => { showToast('File deleted', 'success'); loadFiles(); })
+      .catch(() => showToast('File delete failed', 'danger'));
+    }
+    // --- API Action Feedback ---
     function apiAction(action) {
+      let btn = event.target;
+      setLoading(btn, true);
       fetch(API + '/' + action, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
@@ -84,10 +422,13 @@
       .then(r => r.json())
       .then(function(data) {
         document.getElementById('status').innerText = JSON.stringify(data);
+        showToast(action.charAt(0).toUpperCase() + action.slice(1) + ' complete', 'success');
       })
       .catch(function() {
-        document.getElementById('status').innerText = "Error!";
-      });
+        document.getElementById('status').innerText = 'Error!';
+        showToast(action.charAt(0).toUpperCase() + action.slice(1) + ' failed', 'danger');
+      })
+      .finally(() => setLoading(btn, false));
     }
     function loadFiles() {
       fetch(API + '/files', {
@@ -112,14 +453,17 @@
     function uploadFile(e) {
       e.preventDefault();
       let file = document.getElementById('fileInput').files[0];
-      if (!file) return;
-      let form = new FormData();
-      form.append('file', file);
+      if (!file) return showToast('No file selected', 'warning');
+      let btn = e.submitter;
+      setLoading(btn, true);
       fetch(API + '/files/' + encodeURIComponent(file.name), {
         method: 'PUT',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') },
         body: file
-      }).then(() => loadFiles());
+      })
+      .then(() => { showToast('File uploaded', 'success'); loadFiles(); })
+      .catch(() => showToast('File upload failed', 'danger'))
+      .finally(() => setLoading(btn, false));
     }
     function downloadFile(name) {
       fetch(API + '/files/' + encodeURIComponent(name), {
@@ -137,10 +481,13 @@
       });
     }
     function deleteFile(name) {
+      if (!confirm('Delete file ' + name + '?')) return;
       fetch(API + '/files/' + encodeURIComponent(name), {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
-      }).then(() => loadFiles());
+      })
+      .then(() => { showToast('File deleted', 'success'); loadFiles(); })
+      .catch(() => showToast('File delete failed', 'danger'));
     }
     function loadConfig() {
       fetch(API + '/config', {
@@ -160,14 +507,27 @@
       loadFiles();
     }
     function saveConfig() {
+      let btn = event.target;
+      setLoading(btn, true);
+      let val = document.getElementById('configEditor').value;
+      try {
+        JSON.parse(val);
+      } catch {
+        showToast('Invalid JSON in config', 'danger');
+        setLoading(btn, false);
+        return;
+      }
       fetch(API + '/config', {
         method: 'PUT',
         headers: {
           'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
           'Content-Type': 'application/json'
         },
-        body: document.getElementById('configEditor').value
-      }).then(() => loadConfig());
+        body: val
+      })
+      .then(() => { showToast('Config saved', 'success'); loadConfig(); })
+      .catch(() => showToast('Failed to save config', 'danger'))
+      .finally(() => setLoading(btn, false));
     }
     function runScript(name) {
       fetch(API + '/script/' + name, {
@@ -177,38 +537,8 @@
       .then(r => r.json())
       .then(data => alert('Script output: ' + JSON.stringify(data)));
     }
-    function loadTerminal() {
-      fetch(API + '/terminal/logs', {
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        document.getElementById('terminal').innerText = (data.logs||[]).join('\n');
-        let termDiv = document.getElementById('terminal');
-        termDiv.scrollTop = termDiv.scrollHeight;
-      });
-    }
-    function sendTerminal(e) {
-      e.preventDefault();
-      let cmd = document.getElementById('terminalInput').value.trim();
-      document.getElementById('terminalInput').value = '';
-      if (cmd === 'cls' || cmd === 'clear') {
-        document.getElementById('terminal').innerText = '';
-        return;
-      }
-      fetch(API + '/terminal/exec', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({cmd: cmd})
-      })
-      .then(function() {
-        loadTerminal();
-      });
-    }
     if (localStorage.getItem('secretKey')) checkAuth();
+    else hideMainUI();
   </script>
 </body>
 </html>
