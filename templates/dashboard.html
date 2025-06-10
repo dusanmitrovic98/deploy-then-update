@@ -416,6 +416,7 @@
       list-style: none;
       padding: 0;
       margin: 0;
+      margin-left: 10px;
     }
 
     .file-tree li {
@@ -494,6 +495,7 @@
       font-family: 'Fira Code', 'Consolas', monospace;
       min-height: 400px;
       width: 100%;
+      height: 100%;
       resize: vertical;
     }
 
@@ -1250,23 +1252,25 @@
           // Recursively render the tree as HTML
           function renderTree(node, parentPath = '') {
             let html = '';
-            for (const [name, child] of Object.entries(node)) {
+            // Split entries into folders and files, sort alphabetically
+            const entries = Object.entries(node);
+            const folders = entries.filter(([_, child]) => child !== null).sort((a, b) => a[0].localeCompare(b[0]));
+            const files = entries.filter(([_, child]) => child === null).sort((a, b) => a[0].localeCompare(b[0]));
+            for (const [name, child] of folders) {
               const fullPath = parentPath ? parentPath + '/' + name : name;
-              if (child === null) {
-                // File
-                const icon = getFileIcon(name);
-                html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}")">
-                  <i class="${icon}"></i>
-                  <span>${name}</span>
-                </li>`;
-              } else {
-                // Folder
-                html += `<li class="folder" onclick="toggleFolder(this)">
-                  <i class="codicon codicon-folder"></i>
-                  <span>${name}</span>
-                </li>`;
-                html += `<ul class="folder-children">${renderTree(child, fullPath)}</ul>`;
-              }
+              html += `<li class="folder" onclick="toggleFolder(this)">
+                <i class="codicon codicon-folder"></i>
+                <span>${name}</span>
+              </li>`;
+              html += `<ul class="folder-children">${renderTree(child, fullPath)}</ul>`;
+            }
+            for (const [name, child] of files) {
+              const fullPath = parentPath ? parentPath + '/' + name : name;
+              const icon = getFileIcon(name);
+              html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}")">
+                <i class="${icon}"></i>
+                <span>${name}</span>
+              </li>`;
             }
             return html;
           }
