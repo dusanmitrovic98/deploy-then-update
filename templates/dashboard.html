@@ -111,17 +111,23 @@
       .vscode-panel {
         padding: 8px 0 6px 0;
       }
-      #fileEditorPanelName {
+      #fileEditorPanelName, #fileEditorName {
         white-space: normal;
+        text-overflow: initial;
+        overflow: visible;
       }
+      #fileEditorPanel > div[style*='display:flex'],
       #fileEditorModal .modal-header {
         flex-direction: column;
         align-items: stretch;
         gap: 6px;
+        width: 100%;
       }
-      #fileEditorName {
-        white-space: normal;
+      #fileEditorPanelSave, #fileEditorModal .btn-close {
+        align-self: flex-end;
+        margin-left: 0;
       }
+      .vscode-statusbar { padding-left: 16px; left: 0; right: 0; width: auto; }
     }
     .vscode-explorer {
       background: #23232b;
@@ -244,7 +250,7 @@
       outline: none;
       box-shadow: 0 0 0 1px #3794ff;
     }
-    /* Responsive adjustments */
+    /* --- Consolidated Responsive adjustments --- */
     @media (max-width: 1200px) {
       .vscode-panel {
         padding: 24px 2vw 16px 2vw;
@@ -312,27 +318,6 @@
         align-self: flex-end;
         margin-left: 0;
       }
-      #fileEditorPanelName, #fileEditorName {
-        white-space: normal;
-      }
-    }
-    .vscode-statusbar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: auto;
-      height: 32px;
-      background: #23232b;
-      color: #bdbdbd;
-      display: flex;
-      align-items: center;
-      padding-left: 64px;
-      font-size: 14px;
-      z-index: 30;
-      box-shadow: 0 -2px 8px #0002;
-    }
-    @media (max-width: 700px) {
       .vscode-statusbar { padding-left: 16px; left: 0; right: 0; width: auto; }
     }
     /* File editor modal */
@@ -692,6 +677,27 @@
       .finally(() => setLoading(btn, false));
     }
     // --- File Manager Improvements ---
+    // Consolidated single definition for loadFiles, uploadFile, deleteFile
+    function loadFiles() {
+      fetch(API + '/files', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(data => {
+        let html = '<ul class="list-group">';
+        (data.files||[]).forEach(f => {
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+            <span style='cursor:pointer' onclick='openFileEditor("${f.name}")'>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
+            <span>
+              <button class='btn btn-sm btn-outline-success me-1' onclick='downloadFile("${f.name}")'>Download</button>
+              <button class='btn btn-sm btn-outline-danger' onclick='deleteFile("${f.name}")'>Delete</button>
+            </span>
+          </li>`;
+        });
+        html += '</ul>';
+        document.getElementById('fileList').innerHTML = html;
+      });
+    }
     function uploadFile(e) {
       e.preventDefault();
       let file = document.getElementById('fileInput').files[0];
@@ -716,26 +722,6 @@
       .then(() => { showToast('File deleted', 'success'); loadFiles(); })
       .catch(() => showToast('File delete failed', 'danger'));
     }
-    function loadFiles() {
-      fetch(API + '/files', {
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
-      })
-      .then(r => r.json())
-      .then(data => {
-        let html = '<ul class="list-group">';
-        (data.files||[]).forEach(f => {
-          html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-            <span style='cursor:pointer' onclick='openFileEditor("${f.name}")'>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
-            <span>
-              <button class='btn btn-sm btn-outline-success me-1' onclick='downloadFile("${f.name}")'>Download</button>
-              <button class='btn btn-sm btn-outline-danger' onclick='deleteFile("${f.name}")'>Delete</button>
-            </span>
-          </li>`;
-        });
-        html += '</ul>';
-        document.getElementById('fileList').innerHTML = html;
-      });
-    }
     function openFileEditor(name) {
       // Prevent opening .git or any hidden file
       if (name.startsWith('.git/') || name.startsWith('.git\\') || name === '.git') return;
@@ -753,9 +739,12 @@
       })
       .catch(() => showToast('Failed to load file', 'danger'));
     }
+    // Patch: Only show fileEditorPanel when Explorer is selected
     function openFileEditorPanel(name) {
       // Prevent opening .git or any hidden file
       if (name.startsWith('.git/') || name.startsWith('.git\\') || name === '.git') return;
+      // Only show if Explorer (Files) tab is active
+      if (document.getElementById('panel-files').style.display === 'none') return;
       fetch(API + '/files/' + encodeURIComponent(name), {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
       })
@@ -769,6 +758,14 @@
         document.getElementById('fileEditorPanel').style.display = '';
       })
       .catch(() => showToast('Failed to load file', 'danger'));
+    }
+    // Hide fileEditorPanel when switching away from Explorer
+    const origSwitchTab2 = switchTab;
+    switchTab = function(tab) {
+      origSwitchTab2(tab);
+      if(tab !== 'files') {
+        document.getElementById('fileEditorPanel').style.display = 'none';
+      }
     }
     function saveFileEdit() {
       let name = document.getElementById('fileEditorName').innerText;
