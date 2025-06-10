@@ -716,6 +716,21 @@
       .catch(() => showToast('File upload failed', 'danger'))
       .finally(() => setLoading(btn, false));
     }
+    function downloadFile(name) {
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.blob())
+      .then(blob => {
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = name.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    }
     function deleteFile(name) {
       if (!confirm('Delete file ' + name + '?')) return;
       fetch(API + '/files/' + encodeURIComponent(name), {
