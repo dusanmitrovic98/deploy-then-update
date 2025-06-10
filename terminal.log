@@ -1,32 +1,11 @@
 [exit code: 0]
-> echo Custom script
-Custom script
-[exit code: 0]
-> echo Custom script
-Custom script
-[exit code: 0]
 hello world!
 [exit code: 0]
 hello world!
 [exit code: 0]
 hello world!
 [exit code: 0]
-> echo Custom script
-Custom script
-[exit code: 0]
-> echo hello
-hello
-[exit code: 0]
-> mkdir hello
-[exit code: 0]
-> echo Custom script
-Custom script
-[exit code: 0]
-> echo Custom script
-Custom script
-[exit code: 0]
-> echo Custom script
-Custom script
+hello world!
 [exit code: 0]
 hello world!
 [exit code: 0]
@@ -36,7 +15,19 @@ hello world!
 [exit code: 0]
 hello world!
 [exit code: 0]
-hello world!!!
+hello world!
 [exit code: 0]
-hello world!!!
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
 [exit code: 0]

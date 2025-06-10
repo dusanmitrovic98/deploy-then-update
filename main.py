@@ -262,6 +262,9 @@ def list_files():
 @app.route('/files/<path:filename>', methods=['GET', 'PUT', 'POST', 'DELETE'])
 def manage_files(filename):
     check_auth()
+    # Prevent access to .git* files
+    # if filename.startswith('.git'):
+    #     abort(404)
     file_path = os.path.join(RUNTIME_DIR, filename)
     if request.method == 'GET':
         if os.path.exists(file_path):
