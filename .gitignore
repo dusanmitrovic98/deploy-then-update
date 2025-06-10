@@ -68,3 +68,5 @@ ehthumbs.db
 runtime.pid
 runtime.pids
 terminal.log
+
+runtime/
