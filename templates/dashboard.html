@@ -1017,8 +1017,11 @@
                   <span id="terminalRunSpinner" class="spinner-border spinner-border-sm me-1" style="display:none"></span>
                   <i class="codicon codicon-play"></i> Run
                 </button>
-                <button class="btn btn-outline" type="button" onclick="clearTerminal()">
+                <button class="btn btn-outline" type="button" onclick="loadTerminal()">
                   <i class="codicon codicon-refresh"></i>
+                </button>
+                <button class="btn btn-outline btn-danger" type="button" onclick="deleteTerminalLog()">
+                  <i class="codicon codicon-trash"></i>
                 </button>
               </form>
             </div>
@@ -1189,6 +1192,14 @@
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ cmd: 'clear' })
+      })
+        .then(() => loadTerminal());
+    }
+
+    function deleteTerminalLog() {
+      fetch(API + '/files/terminal.log', {
+        method: 'DELETE',
+        headers: authHeaders()
       })
         .then(() => loadTerminal());
     }
@@ -1511,32 +1522,12 @@
         .then(() => loadTerminal());
     }
 
-    function sendTerminal(e) {
-      e.preventDefault();
-      const input = document.getElementById('terminalInput');
-      const command = input.value.trim();
-      input.value = '';
-      if (!command) return;
-      // Add to history
-      terminalHistory.push(command);
-      terminalHistoryIndex = -1;
-      // Show user command in terminal with prompt
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += `<div class='terminal-line terminal-cmd'><span style='color:#58a6ff;'>&gt; </span>${escapeHtml(command)}</div>`;
-      terminal.scrollTop = terminal.scrollHeight;
-      // Show spinner
-      document.getElementById('terminalRunSpinner').style.display = '';
-      document.getElementById('terminalRunBtn').disabled = true;
-      fetch(API + '/terminal/exec', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ cmd: command })
+    function deleteTerminalLog() {
+      fetch(API + '/files/terminal.log', {
+        method: 'DELETE',
+        headers: authHeaders()
       })
-        .then(() => loadTerminal())
-        .finally(() => {
-          document.getElementById('terminalRunSpinner').style.display = 'none';
-          document.getElementById('terminalRunBtn').disabled = false;
-        });
+        .then(() => loadTerminal());
     }
 
     // --- Config functions ---

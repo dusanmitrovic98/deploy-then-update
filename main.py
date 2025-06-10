@@ -159,7 +159,7 @@ def run_service():
     log_action('Quick Action: Start Services')
     log_action(f'Running: {start_cmd}')
     proc = run_script(start_cmd)
-    log_action(f'Service started with PID {proc.pid}')
+    log_action(f'Service started as subprocess with PID {proc.pid}')
     return jsonify({'status': 'started', 'pid': proc.pid})
 
 @app.route('/stop', methods=['POST'])
@@ -180,7 +180,7 @@ def restart_service():
     start_cmd = config.get('start', 'python app.py')
     log_action(f'Running: {start_cmd}')
     proc = run_script(start_cmd)
-    log_action(f'Service restarted with PID {proc.pid}')
+    log_action(f'Service restarted as subprocess with PID {proc.pid}')
     return jsonify({'status': 'restarted', 'pid': proc.pid})
 
 @app.route('/update', methods=['POST'])
