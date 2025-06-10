@@ -3,19 +3,64 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment
-venv/
-env/
-ENV/
+# C extensions
+*.so
 
-# Environment variables
-.env
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Distribution / packaging
 build/
 dist/
 *.egg-info/
+.eggs/
+*.manifest
+*.spec
 
-# OS files
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# VS Code settings
+.vscode/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# PyCharm
+.idea/
+
+# macOS
 .DS_Store
+
+# Windows
 Thumbs.db
+ehthumbs.db
+
+.env

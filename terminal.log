@@ -1,0 +1,66 @@
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+> echo hi
+hi
+[exit code: 0]
+hello world!
+[exit code: 0]
+> echo hi
+hi
+[exit code: 0]
+> cls
+
+[exit code: 0]
+> clear
+[H[2J[3J
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+> echo hi
+hi
+[exit code: 0]
+hello world!
+[exit code: 0]
+> echo he
+he
+[exit code: 0]
+> echo he
+he
+[exit code: 0]
+> mkdir hello
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+> ls
+app.py
+hello
+README.md
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+hello world!
+[exit code: 0]
+> ls
+app.py
+hello
+README.md
+[exit code: 0]
+> ls
+app.py
+hello
+README.md
+[exit code: 0]
+hello world!
+[exit code: 0]

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Central Management Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body { background: #f8f9fa; }
+    .dashboard { max-width: 500px; margin: 2rem auto; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="dashboard card p-4 shadow">
+    <h2 class="mb-3">Central Management</h2>
+    <div id="auth-section">
+      <form onsubmit="login(); return false;">
+        <input type="password" id="secretKey" class="form-control mb-2" placeholder="Enter Secret Key"/>
+        <button class="btn btn-primary w-100" type="submit">Login</button>
+      </form>
+      <div id="auth-error" class="text-danger mt-2 hidden">Invalid key. Try again.</div>
+    </div>
+    <div id="main-section" class="hidden">
+      <div class="mb-3">
+        <button class="btn btn-success me-2" onclick="apiAction('run')">Run</button>
+        <button class="btn btn-warning me-2" onclick="apiAction('stop')">Stop</button>
+        <button class="btn btn-info me-2" onclick="apiAction('restart')">Restart</button>
+        <button class="btn btn-secondary" onclick="apiAction('update')">Update</button>
+      </div>
+      <div id="status" class="mb-3"></div>
+      <h5>config.json</h5>
+      <textarea id="configEditor" class="form-control mb-2" rows="8"></textarea>
+      <button class="btn btn-primary btn-sm mb-3" onclick="saveConfig()">Save Config</button>
+      <h5>Scripts</h5>
+      <div id="scriptsList"></div>
+      <h5>File Manager</h5>
+      <div id="fileList" class="mb-2" style="max-height:120px;overflow:auto;"></div>
+      <form class="d-flex mb-2" onsubmit="uploadFile(event)">
+        <input type="file" id="fileInput" class="form-control me-2" />
+        <button class="btn btn-outline-primary" type="submit">Upload</button>
+      </form>
+      <h5>Simulated Terminal</h5>
+      <div id="terminal" style="background:#222;color:#eee;font-family:monospace;padding:10px;height:200px;overflow:auto;white-space:pre;">Loading...</div>
+      <form class="d-flex mt-2" onsubmit="sendTerminal(event)">
+        <input id="terminalInput" class="form-control me-2" placeholder="Enter command" autocomplete="off" />
+        <button class="btn btn-dark" type="submit">Run</button>
+        <button class="btn btn-outline-secondary ms-2" type="button" onclick="loadTerminal()">Refresh</button>
+      </form>
+      <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <script>
+    const API = location.origin;
+    function login() {
+      const key = document.getElementById('secretKey').value;
+      localStorage.setItem('secretKey', key);
+      checkAuth();
+    }
+    function logout() {
+      localStorage.removeItem('secretKey');
+      document.getElementById('main-section').classList.add('hidden');
+      document.getElementById('auth-section').classList.remove('hidden');
+    }
+    function checkAuth() {
+      fetch(API + '/run', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      }).then(r => {
+        if (r.status === 401 || r.status === 403) throw new Error();
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('main-section').classList.remove('hidden');
+        document.getElementById('auth-error').classList.add('hidden');
+        loadConfig();
+      }).catch(() => {
+        document.getElementById('auth-error').classList.remove('hidden');
+      });
+    }
+    function apiAction(action) {
+      fetch(API + '/' + action, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(function(data) {
+        document.getElementById('status').innerText = JSON.stringify(data);
+      })
+      .catch(function() {
+        document.getElementById('status').innerText = "Error!";
+      });
+    }
+    function loadFiles() {
+      fetch(API + '/files', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(data => {
+        let html = '<ul class="list-group">';
+        (data.files||[]).forEach(f => {
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
+            <span>
+              <button class='btn btn-sm btn-outline-success me-1' onclick='downloadFile("${f.name}")'>Download</button>
+              <button class='btn btn-sm btn-outline-danger' onclick='deleteFile("${f.name}")'>Delete</button>
+            </span>
+          </li>`;
+        });
+        html += '</ul>';
+        document.getElementById('fileList').innerHTML = html;
+      });
+    }
+    function uploadFile(e) {
+      e.preventDefault();
+      let file = document.getElementById('fileInput').files[0];
+      if (!file) return;
+      let form = new FormData();
+      form.append('file', file);
+      fetch(API + '/files/' + encodeURIComponent(file.name), {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') },
+        body: file
+      }).then(() => loadFiles());
+    }
+    function downloadFile(name) {
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.blob())
+      .then(blob => {
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = name.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    }
+    function deleteFile(name) {
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      }).then(() => loadFiles());
+    }
+    function loadConfig() {
+      fetch(API + '/config', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(cfg => {
+        document.getElementById('configEditor').value = JSON.stringify(cfg, null, 2);
+        // Populate scripts
+        let scripts = cfg.scripts || {};
+        let html = '';
+        for (let name in scripts) {
+          html += `<button class="btn btn-outline-dark btn-sm me-2 mb-2" onclick="runScript('${name}')">${name}</button>`;
+        }
+        document.getElementById('scriptsList').innerHTML = html;
+      });
+      loadFiles();
+    }
+    function saveConfig() {
+      fetch(API + '/config', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
+          'Content-Type': 'application/json'
+        },
+        body: document.getElementById('configEditor').value
+      }).then(() => loadConfig());
+    }
+    function runScript(name) {
+      fetch(API + '/script/' + name, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(data => alert('Script output: ' + JSON.stringify(data)));
+    }
+    function loadTerminal() {
+      fetch(API + '/terminal/logs', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.getElementById('terminal').innerText = (data.logs||[]).join('\n');
+        let termDiv = document.getElementById('terminal');
+        termDiv.scrollTop = termDiv.scrollHeight;
+      });
+    }
+    function sendTerminal(e) {
+      e.preventDefault();
+      let cmd = document.getElementById('terminalInput').value.trim();
+      document.getElementById('terminalInput').value = '';
+      if (cmd === 'cls' || cmd === 'clear') {
+        document.getElementById('terminal').innerText = '';
+        return;
+      }
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('secretKey'),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({cmd: cmd})
+      })
+      .then(function() {
+        loadTerminal();
+      });
+    }
+    if (localStorage.getItem('secretKey')) checkAuth();
+  </script>
+</body>
+</html>

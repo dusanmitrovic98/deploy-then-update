@@ -1,4 +1,5 @@
-Flask==2.3.2
-gunicorn==20.1.0
-Werkzeug==2.3.7
+# == Environment Dependencies ===
+Flask
+gitpython
 python-dotenv
+# == Repository Dependencies ===
