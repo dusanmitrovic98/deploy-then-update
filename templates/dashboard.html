@@ -43,8 +43,34 @@
     /* Layout */
     .app-container {
       display: flex;
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: calc(100vh - 28px); /* Subtract status bar height */
       overflow: hidden;
+    }
+
+    #main-app {
+      display: box;
+      height: calc(100vh - 28px); /* Subtract status bar height */
+      min-height: 0;
+      flex: 1 1 auto;
+      flex-direction: column;
+    }
+
+    .main-content {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .content {
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 24px;
+      position: relative;
+      min-height: 0;
     }
 
     /* Sidebar */
@@ -122,14 +148,6 @@
       text-align: center;
     }
 
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
     /* Header */
     .header {
       height: 64px;
@@ -193,32 +211,6 @@
     .user-role {
       font-size: 12px;
       color: var(--text-secondary);
-    }
-
-    /* Content Area */
-    .content {
-      flex: 1;
-      overflow: auto;
-      padding: 24px;
-      position: relative;
-    }
-
-    .section {
-      margin-bottom: 32px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0;
     }
 
     /* Cards */
@@ -399,6 +391,7 @@
     .explorer-container {
       display: flex;
       height: 100%;
+      min-height: 0;
       background: var(--content-bg);
       border-radius: 8px;
       overflow: hidden;
@@ -952,46 +945,7 @@
                     <i class="codicon codicon-refresh"></i>
                   </button>
                 </div>
-                <ul class="file-tree">
-                  <li class="folder open" onclick="toggleFolder(this)">
-                    <i class="codicon codicon-folder"></i>
-                    <span>Project Files</span>
-                    <ul class="folder-children">
-                      <li class="file" onclick="openFile('src/main.js')">
-                        <i class="codicon codicon-file-code"></i>
-                        <span>main.js</span>
-                      </li>
-                      <li class="file" onclick="openFile('src/utils.js')">
-                        <i class="codicon codicon-file-code"></i>
-                        <span>utils.js</span>
-                      </li>
-                      <li class="folder" onclick="toggleFolder(this)">
-                        <i class="codicon codicon-folder"></i>
-                        <span>config</span>
-                        <ul class="folder-children">
-                          <li class="file" onclick="openFile('config/settings.json')">
-                            <i class="codicon codicon-settings-gear"></i>
-                            <span>settings.json</span>
-                          </li>
-                          <li class="file" onclick="openFile('config/environment.js')">
-                            <i class="codicon codicon-file-code"></i>
-                            <span>environment.js</span>
-                          </li>
-                        </ul>
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="folder" onclick="toggleFolder(this)">
-                    <i class="codicon codicon-folder"></i>
-                    <span>Documentation</span>
-                    <ul class="folder-children">
-                      <li class="file" onclick="openFile('docs/README.md')">
-                        <i class="codicon codicon-markdown"></i>
-                        <span>README.md</span>
-                      </li>
-                    </ul>
-                  </li>
-                </ul>
+                <ul class="file-tree"></ul>
               </div>
               <div class="explorer-content">
                 <div class="editor-header">
@@ -1080,14 +1034,16 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="status-bar">
-      <div class="d-flex gap-3">
-        <span><i class="codicon codicon-circle-filled text-success"></i> Operational</span>
-        <span>Dashboard v0.0.3</span>
-      </div>
-      <div class="ms-auto">
-        <span>© 2025 Central Management System</span>
-      </div>
+  </div>
+
+  <!-- Status Bar (moved outside main-app for fixed positioning) -->
+  <div class="status-bar" style="position:fixed;left:0;right:0;bottom:0;z-index:200;">
+    <div class="d-flex gap-3">
+      <span><i class="codicon codicon-circle-filled text-success"></i> Operational</span>
+      <span>Dashboard v0.0.3</span>
+    </div>
+    <div class="ms-auto">
+      <span>© 2025 Central Management System</span>
     </div>
   </div>
 
@@ -1273,7 +1229,74 @@
       fetch(API + '/files', { headers: authHeaders() })
         .then(r => r.json())
         .then(data => {
-          // TODO: Render file tree from data.files
+          console.log('Files API response:', data); // Debug log
+          // Build a nested tree from flat file paths
+          function buildTree(paths) {
+            const root = {};
+            for (const path of paths) {
+              const parts = path.split(/[\\\/]/); // handle both / and \
+              let node = root;
+              for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (!node[part]) {
+                  node[part] = (i === parts.length - 1) ? null : {};
+                }
+                node = node[part] || {};
+              }
+            }
+            return root;
+          }
+
+          // Recursively render the tree as HTML
+          function renderTree(node, parentPath = '') {
+            let html = '<ul class="file-tree">';
+            let hasContent = false;
+            for (const [name, child] of Object.entries(node)) {
+              hasContent = true;
+              const fullPath = parentPath ? parentPath + '/' + name : name;
+              if (child === null) {
+                // File
+                const icon = getFileIcon(name);
+                html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}')">
+                  <i class="${icon}"></i>
+                  <span>${name}</span>
+                </li>`;
+              } else {
+                // Folder
+                html += `<li class="folder" onclick="toggleFolder(this)">
+                  <i class="codicon codicon-folder"></i>
+                  <span>${name}</span>
+                  ${renderTree(child, fullPath)}
+                </li>`;
+              }
+            }
+            if (!hasContent && parentPath === '') {
+              html += '<li class="text-secondary px-3">No files found.</li>';
+            }
+            html += '</ul>';
+            return html;
+          }
+
+          // Helper to get icon class by file extension
+          function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (ext === 'js') return 'codicon codicon-file-code';
+            if (ext === 'json') return 'codicon codicon-settings-gear';
+            if (ext === 'md') return 'codicon codicon-markdown';
+            if (ext === 'py') return 'codicon codicon-file-code';
+            if (ext === 'txt') return 'codicon codicon-file';
+            return 'codicon codicon-file';
+          }
+
+          // Render the tree
+          const files = Array.isArray(data.files) ? data.files.map(f => f.name) : [];
+          const tree = buildTree(files);
+          const html = renderTree(tree);
+          document.querySelector('.explorer-sidebar .file-tree').innerHTML = html;
+        })
+        .catch(err => {
+          console.error('Failed to load files:', err);
+          document.querySelector('.explorer-sidebar .file-tree').innerHTML = '<li class="text-danger px-3">Failed to load files.</li>';
         });
     }
 
@@ -1335,6 +1358,11 @@
       }
 
       if (navItem) navItem.classList.add('active');
+
+      // Load files when switching to the files tab
+      if (tab === 'files') {
+        loadFiles();
+      }
     }
 
     // Toast notifications
