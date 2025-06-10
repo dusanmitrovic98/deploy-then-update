@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+## [v0.0.5] - 2025-06-10
+- Fixed: File explorer now displays folders and files in a proper nested, collapsible tree structure.
+- Improved: .git and other deep folder structures are now shown as expected, restoring a clean and intuitive file tree view.
+
 ## [v0.0.4] - 2025-06-10
 ### Changed
 - Made all dashboard quick actions (start, stop, restart, update) call the backend API and reflect real system state.

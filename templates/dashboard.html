@@ -1249,15 +1249,13 @@
 
           // Recursively render the tree as HTML
           function renderTree(node, parentPath = '') {
-            let html = '<ul class="file-tree">';
-            let hasContent = false;
+            let html = '';
             for (const [name, child] of Object.entries(node)) {
-              hasContent = true;
               const fullPath = parentPath ? parentPath + '/' + name : name;
               if (child === null) {
                 // File
                 const icon = getFileIcon(name);
-                html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}')">
+                html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}")">
                   <i class="${icon}"></i>
                   <span>${name}</span>
                 </li>`;
@@ -1266,14 +1264,10 @@
                 html += `<li class="folder" onclick="toggleFolder(this)">
                   <i class="codicon codicon-folder"></i>
                   <span>${name}</span>
-                  ${renderTree(child, fullPath)}
                 </li>`;
+                html += `<ul class="folder-children">${renderTree(child, fullPath)}</ul>`;
               }
             }
-            if (!hasContent && parentPath === '') {
-              html += '<li class="text-secondary px-3">No files found.</li>';
-            }
-            html += '</ul>';
             return html;
           }
 
