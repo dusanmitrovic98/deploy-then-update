@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+## [v0.0.3] - 2025-06-10
+### Changed
+- Complete redesign of the dashboard interface.
+- Improved user experience with a more intuitive layout.
+
 ## [v0.0.2] - 2025-06-10
 ### Changed
 - Refactored dashboard.html: removed duplicate CSS and JavaScript, consolidated file manager functions, and ensured the file editor panel is only visible when the Explorer tab is active.
