@@ -1097,6 +1097,185 @@
   <script>
     // API base URL
     const API = location.origin;
+    let SECRET_KEY = localStorage.getItem('secretKey') || '';
+
+    // --- Helper: Auth header ---
+    function authHeaders() {
+      return {
+        'Authorization': 'Bearer ' + SECRET_KEY,
+        'Content-Type': 'application/json',
+      };
+    }
+
+    // --- Auth functions ---
+    function login() {
+      const key = document.getElementById('secretKey').value;
+      if (!key) {
+        document.getElementById('auth-error').style.display = 'block';
+        return;
+      }
+      // Try a real API call to /config to check auth
+      fetch(API + '/config', { headers: { 'Authorization': 'Bearer ' + key } })
+        .then(r => {
+          if (r.ok) {
+            SECRET_KEY = key;
+            localStorage.setItem('secretKey', key);
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('main-app').style.display = '';
+            initApp();
+          } else {
+            document.getElementById('auth-error').style.display = 'block';
+          }
+        })
+        .catch(() => {
+          document.getElementById('auth-error').style.display = 'block';
+        });
+    }
+
+    function logout() {
+      SECRET_KEY = '';
+      localStorage.removeItem('secretKey');
+      document.getElementById('main-app').style.display = 'none';
+      document.getElementById('auth-section').style.display = 'flex';
+      document.getElementById('secretKey').value = '';
+    }
+
+    // --- Config functions ---
+    function loadConfig() {
+      fetch(API + '/config', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(cfg => {
+          document.getElementById('configEditor').value = JSON.stringify(cfg, null, 2);
+          // Populate scripts
+          let html = '';
+          if (cfg.scripts) {
+            for (const [name, cmd] of Object.entries(cfg.scripts)) {
+              html += `<button class="btn btn-outline mb-2" onclick="runScript('${name}')">
+                <i class='codicon codicon-run'></i> ${name}
+              </button>`;
+            }
+          }
+          document.getElementById('scriptsList').innerHTML = html;
+        })
+        .catch(() => {
+          showToast('Failed to load config', 'error', 'Config Error');
+        });
+    }
+
+    function saveConfig() {
+      let val = document.getElementById('configEditor').value;
+      let data;
+      try {
+        data = JSON.parse(val);
+      } catch (e) {
+        showToast('Invalid JSON: ' + e, 'error', 'Config Error');
+        return;
+      }
+      fetch(API + '/config', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data)
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status === 'saved') {
+            showToast('Configuration saved successfully', 'success', 'Config Saved');
+            loadConfig();
+          } else {
+            showToast('Failed to save config', 'error', 'Config Error');
+          }
+        })
+        .catch(() => showToast('Failed to save config', 'error', 'Config Error'));
+    }
+
+    // --- Terminal functions ---
+    function loadTerminal() {
+      fetch(API + '/terminal/logs', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          const terminal = document.getElementById('terminal');
+          terminal.innerHTML = '';
+          (data.logs || []).forEach(line => {
+            terminal.innerHTML += `<div class='terminal-line'>${line}</div>`;
+          });
+          terminal.scrollTop = terminal.scrollHeight;
+        })
+        .catch(() => showToast('Failed to load terminal logs', 'error', 'Terminal'));
+    }
+
+    function clearTerminal() {
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cmd: 'clear' })
+      })
+        .then(() => loadTerminal());
+    }
+
+    function sendTerminal(e) {
+      e.preventDefault();
+      const input = document.getElementById('terminalInput');
+      const command = input.value.trim();
+      input.value = '';
+      if (!command) return;
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cmd: command })
+      })
+        .then(() => loadTerminal());
+    }
+
+    // --- Scripts ---
+    function runScript(name) {
+      fetch(API + '/script/' + encodeURIComponent(name), {
+        method: 'POST',
+        headers: authHeaders()
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status === 'started') {
+            showToast(`Running script: ${name}`, 'success', 'Script Execution');
+            loadTerminal();
+          } else {
+            showToast(res.error || 'Failed to run script', 'error', 'Script Error');
+          }
+        })
+        .catch(() => showToast('Failed to run script', 'error', 'Script Error'));
+    }
+
+    // --- System actions ---
+    function apiAction(action) {
+      let endpoint = '';
+      if (action === 'run') endpoint = '/run';
+      else if (action === 'stop') endpoint = '/stop';
+      else if (action === 'restart') endpoint = '/restart';
+      else if (action === 'update') endpoint = '/update';
+      if (!endpoint) return;
+      fetch(API + endpoint, {
+        method: 'POST',
+        headers: authHeaders()
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status) {
+            showToast(res.status.charAt(0).toUpperCase() + res.status.slice(1), 'success', 'Action Completed');
+            loadTerminal();
+          } else {
+            showToast(res.error || 'Action failed', 'error', 'Action Error');
+          }
+        })
+        .catch(() => showToast('Action failed', 'error', 'Action Error'));
+    }
+
+    // --- File Explorer (basic) ---
+    function loadFiles() {
+      fetch(API + '/files', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          // TODO: Render file tree from data.files
+        });
+    }
 
     // Initialize the app
     function initApp() {
@@ -1208,11 +1387,26 @@
 
     // Terminal functions
     function loadTerminal() {
-      showToast('Terminal logs refreshed', 'success', 'Terminal');
+      fetch(API + '/terminal/logs', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          const terminal = document.getElementById('terminal');
+          terminal.innerHTML = '';
+          (data.logs || []).forEach(line => {
+            terminal.innerHTML += `<div class='terminal-line'>${line}</div>`;
+          });
+          terminal.scrollTop = terminal.scrollHeight;
+        })
+        .catch(() => showToast('Failed to load terminal logs', 'error', 'Terminal'));
     }
 
     function clearTerminal() {
-      document.getElementById('terminal').innerHTML = '<div class="terminal-line">[System] Terminal cleared</div>';
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cmd: 'clear' })
+      })
+        .then(() => loadTerminal());
     }
 
     function sendTerminal(e) {
@@ -1220,134 +1414,74 @@
       const input = document.getElementById('terminalInput');
       const command = input.value.trim();
       input.value = '';
-
       if (!command) return;
-
-      const terminal = document.getElementById('terminal');
-      terminal.innerHTML += `<div class="terminal-line">$ <span class="text-info">${command}</span></div>`;
-
-      // Simulate command output
-      setTimeout(() => {
-        if (command === 'help') {
-          terminal.innerHTML += `<div class="terminal-line">Available commands: status, restart, update, clear</div>`;
-        } else if (command === 'status') {
-          terminal.innerHTML += `<div class="terminal-line">System status: Operational</div>`;
-        } else {
-          terminal.innerHTML += `<div class="terminal-line">Command not recognized: ${command}</div>`;
-        }
-        terminal.scrollTop = terminal.scrollHeight;
-      }, 300);
-
-      terminal.scrollTop = terminal.scrollHeight;
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cmd: command })
+      })
+        .then(() => loadTerminal());
     }
 
     // Config functions
     function loadConfig() {
-      // Simulate loading config
-      document.getElementById('configEditor').value = JSON.stringify({
-        "system": {
-          "name": "Production Server",
-          "environment": "production",
-          "debug": false
-        },
-        "services": {
-          "api": {
-            "port": 8080,
-            "timeout": 30
-          },
-          "database": {
-            "host": "db.example.com",
-            "port": 5432,
-            "user": "admin",
-            "password": "********"
+      fetch(API + '/config', { headers: authHeaders() })
+        .then(r => r.json())
+        .then(cfg => {
+          document.getElementById('configEditor').value = JSON.stringify(cfg, null, 2);
+          // Populate scripts
+          let html = '';
+          if (cfg.scripts) {
+            for (const [name, cmd] of Object.entries(cfg.scripts)) {
+              html += `<button class="btn btn-outline mb-2" onclick="runScript('${name}')">
+                <i class='codicon codicon-run'></i> ${name}
+              </button>`;
+            }
           }
-        },
-        "security": {
-          "firewall": true,
-          "encryption": "aes-256",
-          "access_log": true
-        },
-        "backup": {
-          "enabled": true,
-          "schedule": "daily",
-          "retention": 7
-        }
-      }, null, 2);
-
-      // Populate scripts
-      const scripts = {
-        "Backup Database": "pg_dump -U admin production_db",
-        "System Check": "sh system_check.sh",
-        "Update Packages": "apt update && apt upgrade -y"
-      };
-
-      let html = '';
-      for (const [name, cmd] of Object.entries(scripts)) {
-        html += `<button class="btn btn-outline mb-2" onclick="runScript('${name}')">
-          <i class="codicon codicon-run"></i> ${name}
-        </button>`;
-      }
-      document.getElementById('scriptsList').innerHTML = html;
+          document.getElementById('scriptsList').innerHTML = html;
+        })
+        .catch(() => {
+          showToast('Failed to load config', 'error', 'Config Error');
+        });
     }
 
     function saveConfig() {
-      showToast('Configuration saved successfully', 'success', 'Config Saved');
-    }
-
-    function runScript(name) {
-      showToast(`Running script: ${name}`, 'info', 'Script Execution');
-    }
-
-    // API actions
-    function apiAction(action) {
-      const actions = {
-        'run': 'Services started',
-        'stop': 'Services stopped',
-        'restart': 'System restarting',
-        'update': 'System update initiated'
-      };
-
-      showToast(actions[action], 'success', 'Action Completed');
-    }
-
-    // Auth functions
-    function login() {
-      const key = document.getElementById('secretKey').value;
-      if (!key) {
-        document.getElementById('auth-error').style.display = 'block';
+      let val = document.getElementById('configEditor').value;
+      let data;
+      try {
+        data = JSON.parse(val);
+      } catch (e) {
+        showToast('Invalid JSON: ' + e, 'error', 'Config Error');
         return;
       }
-
-      // Simulate authentication
-      setTimeout(() => {
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('main-app').style.display = '';
-        initApp();
-      }, 800);
-    }
-
-    function logout() {
-      document.getElementById('main-app').style.display = 'none';
-      document.getElementById('auth-section').style.display = 'flex';
-      document.getElementById('secretKey').value = '';
+      fetch(API + '/config', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(data)
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status === 'saved') {
+            showToast('Configuration saved successfully', 'success', 'Config Saved');
+            loadConfig();
+          } else {
+            showToast('Failed to save config', 'error', 'Config Error');
+          }
+        })
+        .catch(() => showToast('Failed to save config', 'error', 'Config Error'));
     }
 
     // Initialize the app if we're bypassing auth for demo
-    // For production, remove this and uncomment the auth check below
     window.addEventListener('DOMContentLoaded', () => {
-      // Uncomment for actual authentication
-      // if (localStorage.getItem('secretKey')) {
-      //   document.getElementById('auth-section').style.display = 'none';
-      //   document.getElementById('main-app').style.display = '';
-      //   initApp();
-      // } else {
-      //   hideMainUI();
-      // }
-
-      // Bypass auth for demo
-      document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('main-app').style.display = '';
-      initApp();
+      if (localStorage.getItem('secretKey')) {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('main-app').style.display = '';
+        SECRET_KEY = localStorage.getItem('secretKey');
+        initApp();
+      } else {
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('auth-section').style.display = 'flex';
+      }
     });
   </script>
 </body>

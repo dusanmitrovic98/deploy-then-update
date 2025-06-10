@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+## [v0.0.4] - 2025-06-10
+### Changed
+- Made all dashboard quick actions (start, stop, restart, update) call the backend API and reflect real system state.
+- Replaced all simulated/demo JavaScript logic with real API calls for config, terminal, and scripts.
+- Authentication is now enforced and required for all API requests.
+- Improved error handling and user feedback for all actions.
+
 ## [v0.0.3] - 2025-06-10
 ### Changed
 - Complete redesign of the dashboard interface.
