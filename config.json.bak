@@ -1,7 +1,8 @@
 {
   "build": "echo No build step defined",
   "scripts": {
-    "custom": "echo Custom script"
+    "custom": "echo Custom script",
+    "echo": "mkdir hello"
   },
   "start": "python app.py"
 }

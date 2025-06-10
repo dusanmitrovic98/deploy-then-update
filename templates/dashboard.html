@@ -212,6 +212,14 @@
             <input type="file" id="fileInput" class="form-control me-2" />
             <button class="btn btn-outline-primary" type="submit" data-label="Upload">Upload</button>
           </form>
+          <div id="fileEditorContainer" style="display:none;margin-top:16px;">
+            <div style="display:flex;align-items:center;margin-bottom:4px;">
+              <span id="fileEditorName" style="font-family:monospace;font-size:1rem;"></span>
+              <button class="btn btn-sm btn-primary ms-2" onclick="saveFileEdit()" data-label="Save">Save</button>
+              <button class="btn btn-sm btn-outline-secondary ms-2" onclick="closeFileEditor()">Close</button>
+            </div>
+            <textarea id="fileEditor" class="form-control" style="height:300px;font-family:'Fira Mono','Consolas',monospace;"></textarea>
+          </div>
         </div>
         <div class="vscode-panel" id="panel-terminal" style="display:none;">
           <h3>Simulated Terminal</h3>
@@ -411,6 +419,57 @@
       .then(() => { showToast('File deleted', 'success'); loadFiles(); })
       .catch(() => showToast('File delete failed', 'danger'));
     }
+    function loadFiles() {
+      fetch(API + '/files', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.json())
+      .then(data => {
+        let html = '<ul class="list-group">';
+        (data.files||[]).forEach(f => {
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+            <span style='cursor:pointer' onclick='openFileEditor("${f.name}")'>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
+            <span>
+              <button class='btn btn-sm btn-outline-success me-1' onclick='downloadFile("${f.name}")'>Download</button>
+              <button class='btn btn-sm btn-outline-danger' onclick='deleteFile("${f.name}")'>Delete</button>
+            </span>
+          </li>`;
+        });
+        html += '</ul>';
+        document.getElementById('fileList').innerHTML = html;
+      });
+    }
+    function openFileEditor(name) {
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
+      })
+      .then(r => r.text())
+      .then(text => {
+        document.getElementById('fileEditorName').innerText = name;
+        document.getElementById('fileEditor').value = text;
+        document.getElementById('fileEditorContainer').style.display = '';
+      })
+      .catch(() => showToast('Failed to load file', 'danger'));
+    }
+    function saveFileEdit() {
+      let name = document.getElementById('fileEditorName').innerText;
+      let content = document.getElementById('fileEditor').value;
+      let btn = event.target;
+      setLoading(btn, true);
+      fetch(API + '/files/' + encodeURIComponent(name), {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') },
+        body: content
+      })
+      .then(() => { showToast('File saved', 'success'); closeFileEditor(); loadFiles(); })
+      .catch(() => showToast('Failed to save file', 'danger'))
+      .finally(() => setLoading(btn, false));
+    }
+    function closeFileEditor() {
+      document.getElementById('fileEditorContainer').style.display = 'none';
+      document.getElementById('fileEditorName').innerText = '';
+      document.getElementById('fileEditor').value = '';
+    }
     // --- API Action Feedback ---
     function apiAction(action) {
       let btn = event.target;
@@ -439,7 +498,7 @@
         let html = '<ul class="list-group">';
         (data.files||[]).forEach(f => {
           html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
+            <span style='cursor:pointer' onclick='openFileEditor("${f.name}")'>${f.name} <small class='text-muted'>(${f.size} bytes)</small></span>
             <span>
               <button class='btn btn-sm btn-outline-success me-1' onclick='downloadFile("${f.name}")'>Download</button>
               <button class='btn btn-sm btn-outline-danger' onclick='deleteFile("${f.name}")'>Delete</button>
@@ -496,8 +555,13 @@
       .then(r => r.json())
       .then(cfg => {
         document.getElementById('configEditor').value = JSON.stringify(cfg, null, 2);
-        // Populate scripts
-        let scripts = cfg.scripts || {};
+        // --- Script Button Population: include top-level string keys as scripts ---
+        let scripts = Object.assign({}, cfg.scripts || {});
+        for (let key in cfg) {
+          if (typeof cfg[key] === 'string' && !['scripts'].includes(key)) {
+            scripts[key] = cfg[key];
+          }
+        }
         let html = '';
         for (let name in scripts) {
           html += `<button class="btn btn-outline-dark btn-sm me-2 mb-2" onclick="runScript('${name}')">${name}</button>`;
