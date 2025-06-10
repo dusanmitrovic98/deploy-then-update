@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+
+## [v0.0.7] - 2025-06-10
+### Fixed
+- Navigation sidebar now correctly highlights the active tab when switching between Dashboard, Explorer, Terminal, and Configuration. The highlight no longer appears on the wrong button due to section headings or order.
+
 ## [0.0.6] - 2025-06-10
 ### Added
 - Terminal "Refresh" button now deletes terminal.log before reloading, matching manual cleanup workflow.

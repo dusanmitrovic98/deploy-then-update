@@ -9,6 +9,7 @@ import queue
 import time
 import json
 from functools import wraps
+from datetime import datetime
 
 load_dotenv()
 
@@ -108,6 +109,12 @@ def check_auth():
     FAILED_AUTH[ip] = 0
 
 def run_script(script):
+    # If script starts with 'python ' or 'python.exe ', add -u for unbuffered output
+    import shlex
+    parts = shlex.split(script)
+    if parts and parts[0].startswith('python') and '-u' not in parts:
+        parts.insert(1, '-u')
+        script = ' '.join(shlex.quote(p) for p in parts)
     proc = subprocess.Popen(script, shell=True, cwd=RUNTIME_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     add_pid(proc.pid)
     def log_output():
@@ -140,40 +147,60 @@ def on_rm_error(func, path, exc_info):
     except Exception:
         pass
 
+def log_action(msg):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    append_terminal_log(f'[{timestamp}] {msg}')
+
 @app.route('/run', methods=['POST'])
 def run_service():
     check_auth()
     config = load_config()
     start_cmd = config.get('start', 'python app.py')
+    log_action('Quick Action: Start Services')
+    log_action(f'Running: {start_cmd}')
     proc = run_script(start_cmd)
+    log_action(f'Service started with PID {proc.pid}')
     return jsonify({'status': 'started', 'pid': proc.pid})
 
 @app.route('/stop', methods=['POST'])
 def stop_service():
     check_auth()
+    log_action('Quick Action: Stop Services')
     stop_running_process()
+    log_action('All services stopped')
     return jsonify({'status': 'stopped'})
 
 @app.route('/restart', methods=['POST'])
 def restart_service():
     check_auth()
+    log_action('Quick Action: Restart System')
     stop_running_process()
+    log_action('All services stopped (for restart)')
     config = load_config()
     start_cmd = config.get('start', 'python app.py')
+    log_action(f'Running: {start_cmd}')
     proc = run_script(start_cmd)
+    log_action(f'Service restarted with PID {proc.pid}')
     return jsonify({'status': 'restarted', 'pid': proc.pid})
 
 @app.route('/update', methods=['POST'])
 def update_service():
     check_auth()
+    log_action('Quick Action: Update System')
     stop_running_process()
+    log_action('All services stopped (for update)')
     if os.path.exists(RUNTIME_DIR):
         shutil.rmtree(RUNTIME_DIR, onerror=on_rm_error)
+        log_action('Runtime directory removed')
+    log_action('Cloning latest code from repository')
     git.Repo.clone_from(GITHUB_REPO.replace('https://', f'https://{GITHUB_TOKEN}@'), RUNTIME_DIR)
+    log_action('Repository cloned')
     config = load_config()
     build_cmd = config.get('build')
     if build_cmd:
+        log_action(f'Running build: {build_cmd}')
         run_script(build_cmd)
+    log_action('System update complete')
     return jsonify({'status': 'updated'})
 
 @app.route('/terminal/logs', methods=['GET'])
@@ -243,8 +270,10 @@ def run_custom_script(name):
     script_cmd = scripts.get(name)
     if not script_cmd:
         return jsonify({'error': 'Script not found'}), 404
-    append_terminal_log(f'> {script_cmd}')
+    log_action(f'Script: {name} - {script_cmd}')
+    log_action(f'Running script: {name}')
     run_script(script_cmd)
+    log_action(f'Script {name} started')
     return jsonify({'status': 'started'})
 
 @app.route('/files', methods=['GET'])

@@ -1,7 +1,7 @@
 {
-  "build": "echo No build step defined",
+  "build": "echo [BUILD] No build step defined",
   "scripts": {
-    "echo": "echo \"hello world!!\""
+    "echo": "echo hello world!"
   },
   "start": "python app.py"
 }
