@@ -495,8 +495,15 @@
       font-family: 'Fira Code', 'Consolas', monospace;
       min-height: 400px;
       width: 100%;
-      height: 100%;
+      height: 90%;
       resize: vertical;
+    }
+    textarea.form-control:focus {
+      background:  var(--terminal-bg);
+      color: white;
+      border: 1px solid var(--terminal-border);
+      outline: none;
+      box-shadow: none;
     }
 
     /* Status Bar */
@@ -956,7 +963,7 @@
                     <span id="current-file">Select a file to edit</span>
                   </h3>
                   <div>
-                    <button class="btn btn-primary btn-sm">
+                    <button class="btn btn-primary btn-sm" onclick="saveFile()">
                       <i class="codicon codicon-save"></i> Save
                     </button>
                   </div>
@@ -1008,8 +1015,8 @@
             <div class="section">
               <div class="section-header">
                 <h2 class="section-title">System Configuration</h2>
-                <div>
-                  <button class="btn btn-primary" onclick="saveConfig()">
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn btn-primary save-config" onclick="saveConfig()">
                     <i class="codicon codicon-save"></i> Save Configuration
                   </button>
                 </div>
@@ -1267,9 +1274,9 @@
             for (const [name, child] of files) {
               const fullPath = parentPath ? parentPath + '/' + name : name;
               const icon = getFileIcon(name);
-              html += `<li class="file" onclick="openFile('${fullPath.replace(/'/g, "\\'")}")">
+              html += `<li class="file">
                 <i class="${icon}"></i>
-                <span>${name}</span>
+                <span style="flex:1;cursor:pointer" onclick="openFile('${fullPath.replace(/'/g, "\\'")}')">${name}</span>
               </li>`;
             }
             return html;
@@ -1296,6 +1303,47 @@
           console.error('Failed to load files:', err);
           document.querySelector('.explorer-sidebar .file-tree').innerHTML = '<li class="text-danger px-3">Failed to load files.</li>';
         });
+    }
+
+    // File open
+    function openFile(filename) {
+      document.getElementById('current-file').textContent = filename;
+      fetch(API + '/files/' + encodeURIComponent(filename), {
+        headers: authHeaders()
+      })
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to load file');
+          return response.text();
+        })
+        .then(text => {
+          document.getElementById('fileEditorPanelText').value = text;
+        })
+        .catch(err => {
+          document.getElementById('fileEditorPanelText').value = '// Failed to load file: ' + err;
+        });
+    }
+
+    // Save file
+    function saveFile() {
+      const filename = document.getElementById('current-file').textContent;
+      const content = document.getElementById('fileEditorPanelText').value;
+      if (!filename || filename === 'Select a file to edit') {
+        showToast('No file selected', 'error', 'Save Error');
+        return;
+      }
+      fetch(API + '/files/' + encodeURIComponent(filename), {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: content
+      })
+        .then(r => {
+          if (r.ok) {
+            showToast('File saved successfully', 'success', 'File Saved');
+          } else {
+            showToast('Failed to save file', 'error', 'Save Error');
+          }
+        })
+        .catch(() => showToast('Failed to save file', 'error', 'Save Error'));
     }
 
     // Initialize the app
@@ -1403,12 +1451,6 @@
       if (children) {
         children.style.display = children.style.display === 'none' ? 'block' : 'none';
       }
-    }
-
-    // File open
-    function openFile(filename) {
-      document.getElementById('current-file').textContent = filename;
-      document.getElementById('fileEditorPanelText').value = `// Contents of ${filename}\n\nfunction example() {\n  console.log("Hello, world!");\n}\n`;
     }
 
     // Terminal functions

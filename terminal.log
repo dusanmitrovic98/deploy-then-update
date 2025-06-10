@@ -1,3 +1,8 @@
 [exit code: 0]
 hello world!
 [exit code: 0]
+hello world!
+[exit code: 0]
+> echo "hello world!!"
+"hello world!!"
+[exit code: 0]
