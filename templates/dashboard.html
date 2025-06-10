@@ -135,7 +135,7 @@
       width: 240px;
       min-width: 160px;
       max-width: 320px;
-      border-right: 1px solid #222;
+      border-right: 1px solid rgb(73, 73, 73);
       padding: 16px 0 0 0;
       height: 100%;
       overflow-y: auto;
@@ -162,7 +162,6 @@
     .vscode-panel {
       background: #23232b;
       color: #e0e0e0;
-      padding: 32px 32px 24px 32px;
       flex: 1;
       overflow-y: auto;
       min-width: 0;
@@ -414,8 +413,7 @@
         </div>
         <div class="vscode-panel d-flex flex-row" id="panel-files" style="display:none; min-height:400px; overflow:hidden;">
           <ul id="explorerFileTree" style="background:#23232b; border-right:1px solid #222; margin:0; padding:16px 0 0 0; height:100%; overflow-y:auto; overflow-x:hidden; resize:none; transition:width 0.1s; list-style:none;"></ul>
-          <div id="explorerResizer" style="width:6px; cursor:col-resize; background:#23232b; z-index:10; position:relative;"></div>
-          <div id="fileEditorPanel" style="display:none; flex:1 1 0%; margin:24px 0 0 32px; min-width:0; overflow:auto; max-width:100vw;">
+          <div id="fileEditorPanel" style="display:none; flex:1 1 0%; margin:24px 0 0 32px; min-width:0; overflow:auto; max-width:100vw; margin-right: 20px; margin: 0px 7px -18px 0px;">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
               <span id="fileEditorPanelName" style="font-weight:600; word-break:break-all; flex:1;"></span>
               <button id="fileEditorPanelSave" class="btn btn-primary btn-sm" title="Save File" onclick="saveFilePanelEdit()" style="flex-shrink:0;"><span class="codicon codicon-save"></span></button>
@@ -535,12 +533,18 @@
       })
       .catch(function() { showToast('Failed to load file tree', 'danger'); });
     }
-    // Call this when switching to files tab
+    // --- Tab Switching (consolidated) ---
     const origSwitchTab = switchTab;
     switchTab = function(tab) {
       origSwitchTab(tab);
+      // Load explorer file tree if switching to files
       if(tab === 'files') loadExplorerFileTree();
+      // Hide fileEditorPanel when switching away from Explorer
+      if(tab !== 'files') {
+        document.getElementById('fileEditorPanel').style.display = 'none';
+      }
     }
+    // --- UI Show/Hide ---
     function showMainUI() {
       document.getElementById('auth-section').style.display = 'none';
       document.querySelector('.vscode-shell').style.display = 'flex';
@@ -676,8 +680,7 @@
       .catch(() => showToast('Failed to save config', 'danger'))
       .finally(() => setLoading(btn, false));
     }
-    // --- File Manager Improvements ---
-    // Consolidated single definition for loadFiles, uploadFile, deleteFile
+    // --- File Manager (single definition, DRY) ---
     function loadFiles() {
       fetch(API + '/files', {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('secretKey') }
@@ -758,14 +761,6 @@
         document.getElementById('fileEditorPanel').style.display = '';
       })
       .catch(() => showToast('Failed to load file', 'danger'));
-    }
-    // Hide fileEditorPanel when switching away from Explorer
-    const origSwitchTab2 = switchTab;
-    switchTab = function(tab) {
-      origSwitchTab2(tab);
-      if(tab !== 'files') {
-        document.getElementById('fileEditorPanel').style.display = 'none';
-      }
     }
     function saveFileEdit() {
       let name = document.getElementById('fileEditorName').innerText;
@@ -933,34 +928,6 @@
     }
     if (localStorage.getItem('secretKey')) checkAuth();
     else hideMainUI();
-    // --- Explorer Resizer ---
-    (function() {
-      let explorer = document.getElementById('explorerFileTree');
-      let resizer = document.getElementById('explorerResizer');
-      let panel = document.getElementById('panel-files');
-      let dragging = false;
-      let startX, startWidth;
-      resizer.onmousedown = function(e) {
-        dragging = true;
-        startX = e.clientX;
-        startWidth = explorer.offsetWidth;
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-      };
-      window.addEventListener('mousemove', function(e) {
-        if (!dragging) return;
-        let dx = e.clientX - startX;
-        let newWidth = Math.max(120, Math.min(400, startWidth + dx));
-        explorer.style.width = newWidth + 'px';
-      });
-      window.addEventListener('mouseup', function() {
-        if (dragging) {
-          dragging = false;
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-        }
-      });
-    })();
   </script>
 </body>
 </html>
