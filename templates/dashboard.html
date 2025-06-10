@@ -996,13 +996,6 @@
           <!-- Terminal Panel -->
           <div id="panel-terminal" style="display: none;">
             <div class="section">
-              <div class="section-header">
-                <h2 class="section-title">System Terminal</h2>
-                <button class="btn btn-outline btn-sm" onclick="clearTerminal()">
-                  <i class="codicon codicon-clear-all"></i> Clear
-                </button>
-              </div>
-
               <div class="terminal-container">
                 <div class="terminal-header">
                   <i class="codicon codicon-terminal"></i>
@@ -1024,7 +1017,7 @@
                   <span id="terminalRunSpinner" class="spinner-border spinner-border-sm me-1" style="display:none"></span>
                   <i class="codicon codicon-play"></i> Run
                 </button>
-                <button class="btn btn-outline" type="button" onclick="refreshTerminalAndRemoveLog()">
+                <button class="btn btn-outline" type="button" onclick="clearTerminal()">
                   <i class="codicon codicon-refresh"></i>
                 </button>
               </form>
@@ -1226,15 +1219,6 @@
           document.getElementById('terminalRunSpinner').style.display = 'none';
           document.getElementById('terminalRunBtn').disabled = false;
         });
-    }
-
-    function refreshTerminalAndRemoveLog() {
-      fetch(API + '/terminal/exec', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ cmd: 'rm ../terminal.log' })
-      })
-        .then(() => loadTerminal());
     }
 
     // --- Scripts ---

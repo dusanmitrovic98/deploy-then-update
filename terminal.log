@@ -1,8 +1,0 @@
-[exit code: 0]
-> ls
-app.py
-README.md
-temp
-[exit code: 0]
-> rm temp
-[exit code: 0]
