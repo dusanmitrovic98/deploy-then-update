@@ -346,6 +346,9 @@
       border-radius: 8px;
       overflow: hidden;
       margin-bottom: 16px;
+      height: 60vh;
+      display: flex;
+      flex-direction: column;
     }
 
     .terminal-header {
@@ -358,13 +361,16 @@
     }
 
     .terminal {
-      height: 300px;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
       overflow: auto;
       padding: 16px;
       font-family: 'Fira Code', 'Consolas', monospace;
       font-size: 14px;
       line-height: 1.5;
       white-space: pre-wrap;
+      background: transparent;
     }
 
     .terminal-line {
@@ -678,6 +684,20 @@
       .user-info {
         display: none;
       }
+    }
+
+    .terminal-cmd {
+      color: #58a6ff;
+      font-weight: bold;
+    }
+
+    .terminal-error {
+      color: #f85149;
+      font-weight: bold;
+    }
+
+    .spinner-border {
+      vertical-align: middle;
     }
   </style>
 </head>
@@ -1000,10 +1020,11 @@
               <form class="d-flex gap-2 mt-2" onsubmit="sendTerminal(event)">
                 <input id="terminalInput" class="form-control terminal-input" placeholder="Enter command..."
                   autocomplete="off" />
-                <button class="btn btn-primary" type="submit">
+                <button class="btn btn-primary" id="terminalRunBtn" type="submit">
+                  <span id="terminalRunSpinner" class="spinner-border spinner-border-sm me-1" style="display:none"></span>
                   <i class="codicon codicon-play"></i> Run
                 </button>
-                <button class="btn btn-outline" type="button" onclick="loadTerminal()">
+                <button class="btn btn-outline" type="button" onclick="refreshTerminalAndRemoveLog()">
                   <i class="codicon codicon-refresh"></i>
                 </button>
               </form>
@@ -1161,7 +1182,9 @@
           const terminal = document.getElementById('terminal');
           terminal.innerHTML = '';
           (data.logs || []).forEach(line => {
-            terminal.innerHTML += `<div class='terminal-line'>${line}</div>`;
+            let cls = 'terminal-line';
+            if (/error|failed/i.test(line)) cls += ' terminal-error';
+            terminal.innerHTML += `<div class='${cls}'>${escapeHtml(line)}</div>`;
           });
           terminal.scrollTop = terminal.scrollHeight;
         })
@@ -1183,10 +1206,33 @@
       const command = input.value.trim();
       input.value = '';
       if (!command) return;
+      // Add to history
+      terminalHistory.push(command);
+      terminalHistoryIndex = -1;
+      // Show user command in terminal with prompt
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += `<div class='terminal-line terminal-cmd'><span style='color:#58a6ff;'>&gt; </span>${escapeHtml(command)}</div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+      // Show spinner
+      document.getElementById('terminalRunSpinner').style.display = '';
+      document.getElementById('terminalRunBtn').disabled = true;
       fetch(API + '/terminal/exec', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ cmd: command })
+      })
+        .then(() => loadTerminal())
+        .finally(() => {
+          document.getElementById('terminalRunSpinner').style.display = 'none';
+          document.getElementById('terminalRunBtn').disabled = false;
+        });
+    }
+
+    function refreshTerminalAndRemoveLog() {
+      fetch(API + '/terminal/exec', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ cmd: 'rm ../terminal.log' })
       })
         .then(() => loadTerminal());
     }
@@ -1205,8 +1251,13 @@
           } else {
             showToast(res.error || 'Failed to run script', 'error', 'Script Error');
           }
+          // Console log the response
+          console.log('Script output:', res);
         })
-        .catch(() => showToast('Failed to run script', 'error', 'Script Error'));
+        .catch(err => {
+          showToast('Failed to run script', 'error', 'Script Error');
+          console.error('Script error:', err);
+        });
     }
 
     // --- System actions ---
@@ -1229,8 +1280,13 @@
           } else {
             showToast(res.error || 'Action failed', 'error', 'Action Error');
           }
+          // Console log the response
+          console.log('QuickAction output:', res);
         })
-        .catch(() => showToast('Action failed', 'error', 'Action Error'));
+        .catch(err => {
+          showToast('Action failed', 'error', 'Action Error');
+          console.error('QuickAction error:', err);
+        });
     }
 
     // --- File Explorer (basic) ---
@@ -1461,7 +1517,9 @@
           const terminal = document.getElementById('terminal');
           terminal.innerHTML = '';
           (data.logs || []).forEach(line => {
-            terminal.innerHTML += `<div class='terminal-line'>${line}</div>`;
+            let cls = 'terminal-line';
+            if (/error|failed/i.test(line)) cls += ' terminal-error';
+            terminal.innerHTML += `<div class='${cls}'>${escapeHtml(line)}</div>`;
           });
           terminal.scrollTop = terminal.scrollHeight;
         })
@@ -1483,15 +1541,29 @@
       const command = input.value.trim();
       input.value = '';
       if (!command) return;
+      // Add to history
+      terminalHistory.push(command);
+      terminalHistoryIndex = -1;
+      // Show user command in terminal with prompt
+      const terminal = document.getElementById('terminal');
+      terminal.innerHTML += `<div class='terminal-line terminal-cmd'><span style='color:#58a6ff;'>&gt; </span>${escapeHtml(command)}</div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+      // Show spinner
+      document.getElementById('terminalRunSpinner').style.display = '';
+      document.getElementById('terminalRunBtn').disabled = true;
       fetch(API + '/terminal/exec', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ cmd: command })
       })
-        .then(() => loadTerminal());
+        .then(() => loadTerminal())
+        .finally(() => {
+          document.getElementById('terminalRunSpinner').style.display = 'none';
+          document.getElementById('terminalRunBtn').disabled = false;
+        });
     }
 
-    // Config functions
+    // --- Config functions ---
     function loadConfig() {
       fetch(API + '/config', { headers: authHeaders() })
         .then(r => r.json())
@@ -1551,6 +1623,43 @@
         document.getElementById('auth-section').style.display = 'flex';
       }
     });
+
+    // --- Terminal Command History ---
+    let terminalHistory = [];
+    let terminalHistoryIndex = -1;
+    const terminalInput = document.getElementById('terminalInput');
+    if (terminalInput) {
+      terminalInput.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp') {
+          if (terminalHistory.length && terminalHistoryIndex > 0) {
+            terminalHistoryIndex--;
+            terminalInput.value = terminalHistory[terminalHistoryIndex];
+            e.preventDefault();
+          } else if (terminalHistory.length && terminalHistoryIndex === -1) {
+            terminalHistoryIndex = terminalHistory.length - 1;
+            terminalInput.value = terminalHistory[terminalHistoryIndex];
+            e.preventDefault();
+          }
+        } else if (e.key === 'ArrowDown') {
+          if (terminalHistory.length && terminalHistoryIndex < terminalHistory.length - 1) {
+            terminalHistoryIndex++;
+            terminalInput.value = terminalHistory[terminalHistoryIndex];
+            e.preventDefault();
+          } else if (terminalHistory.length && terminalHistoryIndex === terminalHistory.length - 1) {
+            terminalHistoryIndex = -1;
+            terminalInput.value = '';
+            e.preventDefault();
+          }
+        }
+      });
+    }
+
+    // --- HTML escape helper ---
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'})[m];
+      });
+    }
   </script>
 </body>
 

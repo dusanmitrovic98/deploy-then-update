@@ -1,8 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+## [0.0.6] - 2025-06-10
+### Added
+- Terminal "Refresh" button now deletes terminal.log before reloading, matching manual cleanup workflow.
+### Changed
+- Terminal panel and console now use the full available height for a better visual experience.
+### Fixed
+- Improved usability and consistency in the terminal panel.
+
 ## [v0.0.5] - 2025-06-10
-- Fixed: File explorer now displays folders and files in a proper nested, collapsible tree structure.
+### Fixed
+- File explorer now displays folders and files in a proper nested, collapsible tree structure.
 - Improved: .git and other deep folder structures are now shown as expected, restoring a clean and intuitive file tree view.
 
 ## [v0.0.4] - 2025-06-10
