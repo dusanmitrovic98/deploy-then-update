@@ -16,7 +16,7 @@ load_dotenv()
 REPO_URL = os.environ.get('REPO_URL', 'https://github.com/your/repo.git')
 REPO_NAME = os.environ.get('REPO_NAME', 'deployed_repo')
 REPO_PATH = os.path.join(os.getcwd(), REPO_NAME)
-RUN_COMMAND = os.environ.get('RUN_COMMAND', 'python app.py')
+DEFAULT_RUN_COMMAND = 'python app.py'  # Default if not set by user
 LOG_FILE = os.path.join(os.getcwd(), 'output.log')
 
 # Configure logging
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 process = None
 is_running = False
 operation_lock = threading.Lock()
+run_command = DEFAULT_RUN_COMMAND  # Store the current run command
 
 def clone_repo():
     """Clone repository from the specified URL"""
@@ -42,9 +43,9 @@ def clone_repo():
         logger.error(f"Clone failed: {e.stderr}")
         return False
 
-def run_process():
+def run_process(custom_command=None):
     """Run the process in the repository"""
-    global process, is_running
+    global process, is_running, run_command
     
     if is_running:
         return False
@@ -54,11 +55,14 @@ def run_process():
         if not os.path.exists(REPO_PATH):
             if not clone_repo():
                 return False
-                
-        logger.info(f"Starting process with command: {RUN_COMMAND}")
+        
+        # Use custom command if provided
+        if custom_command:
+            run_command = custom_command
+        logger.info(f"Starting process with command: {run_command}")
         with open(LOG_FILE, 'w') as log_file:
             process = subprocess.Popen(
-                RUN_COMMAND.split(),
+                run_command.split(),
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
                 cwd=REPO_PATH
@@ -157,18 +161,20 @@ def index():
         'index.html',
         repo_exists=repo_exists,
         is_running=is_running,
-        repo_name=REPO_NAME
+        repo_name=REPO_NAME,
+        run_command=run_command
     )
 
 @app.route('/action', methods=['POST'])
 def handle_action():
     action = request.json.get('action')
+    custom_command = request.json.get('run_command')
     response = {'success': False, 'message': ''}
     
     with operation_lock:
         try:
             if action == 'run':
-                if run_process():
+                if run_process(custom_command):
                     response.update(success=True, message='Repository started')
                 else:
                     response.update(message='Failed to start repository')
@@ -215,7 +221,8 @@ def view_logs():
 def get_status():
     return jsonify({
         'is_running': is_running,
-        'repo_exists': os.path.exists(REPO_PATH)
+        'repo_exists': os.path.exists(REPO_PATH),
+        'run_command': run_command
     })
 
 if __name__ == '__main__':

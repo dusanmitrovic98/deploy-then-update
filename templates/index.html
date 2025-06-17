@@ -113,22 +113,33 @@
                             </a>
                         </div>
                         
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-4">
-                            <button class="btn btn-success btn-action" data-action="run">
-                                <i class="bi bi-play-circle"></i> Run
-                            </button>
-                            <button class="btn btn-danger btn-action" data-action="stop">
-                                <i class="bi bi-stop-circle"></i> Stop
-                            </button>
-                            <button class="btn btn-warning btn-action" data-action="restart">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <form id="runCommandForm" class="w-100 d-flex align-items-center gap-2">
+                                <input type="text" class="form-control" id="runCommandInput" name="run_command" value="{{ run_command }}" placeholder="Enter run command (e.g. python app.py)" autocomplete="off" required style="min-width: 200px;">
+                                <button type="submit" class="btn btn-success btn-action" data-action="run" id="runBtn">
+                                    <i class="bi bi-play-fill"></i> Run
+                                    <span class="spinner spinner-border spinner-border-sm"></span>
+                                </button>
+                            </form>
+                            <button class="btn btn-warning btn-action ms-2" data-action="restart" id="restartBtn">
                                 <i class="bi bi-arrow-repeat"></i> Restart
+                                <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
-                            <button class="btn btn-info btn-action" data-action="update">
-                                <i class="bi bi-cloud-arrow-down"></i> Update
+                            <button class="btn btn-danger btn-action ms-2" data-action="stop" id="stopBtn">
+                                <i class="bi bi-stop-fill"></i> Stop
+                                <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
-                            <button class="btn btn-outline-danger btn-action" data-action="remove">
+                            <button class="btn btn-secondary btn-action ms-2" data-action="remove" id="removeBtn">
                                 <i class="bi bi-trash"></i> Remove
+                                <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
+                            <button class="btn btn-info btn-action ms-2" data-action="update" id="updateBtn">
+                                <i class="bi bi-cloud-arrow-up"></i> Update
+                                <span class="spinner spinner-border spinner-border-sm"></span>
+                            </button>
+                            <a href="/logs" class="btn btn-outline-light ms-2">
+                                <i class="bi bi-journal-text"></i> Logs
+                            </a>
                         </div>
                         
                         <div class="progress mt-4" style="height: 4px; display: none;" id="globalProgress">
@@ -154,6 +165,9 @@
         const statusText = document.getElementById('statusText');
         const repoStatus = document.getElementById('repoStatus');
         const globalProgress = document.getElementById('globalProgress');
+        const runCommandForm = document.getElementById('runCommandForm');
+        const runCommandInput = document.getElementById('runCommandInput');
+        const runBtn = document.getElementById('runBtn');
         
         // Create toast function
         function showToast(message, success = true) {
@@ -200,49 +214,71 @@
                     repoStatus.textContent = data.repo_exists 
                         ? 'Repository exists' 
                         : 'Repository not cloned';
+                    
+                    if (data.run_command !== undefined) {
+                        runCommandInput.value = data.run_command;
+                    }
                 });
         }
         
         // Initial status update
         updateStatus();
         
-        // Action handlers
-        document.querySelectorAll('.btn-action').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const action = this.dataset.action;
-                const btn = this;
-                
-                // Show global progress
-                globalProgress.style.display = 'block';
-                btn.classList.add('action-loading');
-                
-                fetch('/action', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message, true);
-                    } else {
-                        showToast(data.message || `Action ${action} failed`, false);
-                    }
-                    
-                    // Refresh status after action completes
-                    setTimeout(updateStatus, 1000);
-                })
-                .catch(error => {
-                    showToast(`Network error: ${error.message}`, false);
-                })
-                .finally(() => {
-                    // Hide progress after delay
-                    setTimeout(() => {
-                        globalProgress.style.display = 'none';
-                        btn.classList.remove('action-loading');
-                    }, 1000);
-                });
+        // Run command form submission
+        runCommandForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const run_command = runCommandInput.value.trim();
+            if (!run_command) return;
+            runBtn.classList.add('action-loading');
+            globalProgress.style.display = 'block';
+            fetch('/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'run', run_command })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.message, data.success);
+                setTimeout(updateStatus, 1000);
+            })
+            .catch(error => {
+                showToast(`Network error: ${error.message}`, false);
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    runBtn.classList.remove('action-loading');
+                }, 1000);
             });
+        });
+        
+        // Action handlers for other buttons
+        ['restartBtn', 'stopBtn', 'removeBtn', 'updateBtn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', function() {
+                    const action = this.dataset.action;
+                    btn.classList.add('action-loading');
+                    globalProgress.style.display = 'block';
+                    fetch('/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        showToast(data.message, data.success);
+                        setTimeout(updateStatus, 1000);
+                    })
+                    .catch(error => {
+                        showToast(`Network error: ${error.message}`, false);
+                    })
+                    .finally(() => {
+                        setTimeout(() => {
+                            btn.classList.remove('action-loading');
+                        }, 1000);
+                    });
+                });
+            }
         });
         
         // Periodically update status
