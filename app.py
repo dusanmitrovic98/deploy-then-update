@@ -15,7 +15,7 @@ load_dotenv()
 REPO_URL = os.environ.get('REPO_URL', 'https://github.com/your/repo.git')
 REPO_NAME = os.environ.get('REPO_NAME', 'deployed_repo')
 REPO_PATH = os.path.join(os.getcwd(), REPO_NAME)
-DEFAULT_RUN_COMMAND = os.environ.get('RUN_COMMAND', 'python app.py')
+DEFAULT_RUN_COMMAND = os.environ.get('RUN_COMMAND', 'pip install -r requirements.txt && python app.py')
 LOG_FILE = os.path.join(os.getcwd(), 'output.log')
 RUN_COMMAND_FILE = os.path.join(os.getcwd(), '.run_command')
 
