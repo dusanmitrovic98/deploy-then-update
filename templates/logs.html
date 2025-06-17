@@ -18,7 +18,7 @@
             color: #c9d1d9;
             padding: 20px;
             border-radius: 5px;
-            font-family: 'Courier New', monospace;
+            font-family: 'Fira Code', 'Courier New', monospace;
             white-space: pre-wrap;
             height: 70vh;
             overflow-y: auto;
@@ -29,15 +29,11 @@
         
         .log-line {
             padding: 2px 0;
-            border-bottom: 1px solid #30363d;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
         }
         
         .log-line:last-child {
             border-bottom: none;
-        }
-        
-        .highlight {
-            background-color: rgba(255, 217, 0, 0.1);
         }
         
         .log-header {
@@ -46,12 +42,45 @@
             border-radius: 5px 5px 0 0;
             border-bottom: 1px solid #30363d;
         }
+        
+        .log-info {
+            background: rgba(111, 66, 193, 0.15);
+            border-left: 3px solid #6f42c1;
+        }
+        
+        .log-warning {
+            background: rgba(255, 193, 7, 0.15);
+            border-left: 3px solid #ffc107;
+        }
+        
+        .log-error {
+            background: rgba(220, 53, 69, 0.15);
+            border-left: 3px solid #dc3545;
+        }
+        
+        .log-success {
+            background: rgba(40, 167, 69, 0.15);
+            border-left: 3px solid #28a745;
+        }
+        
+        .highlight {
+            background-color: rgba(255, 217, 0, 0.2);
+        }
+        
+        .log-toolbar {
+            background-color: #1e1e1e;
+            padding: 10px 15px;
+            border-radius: 0 0 5px 5px;
+            border-top: 1px solid #30363d;
+        }
     </style>
 </head>
 <body>
     <div class="container py-3">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1 class="h3"><i class="bi bi-journal-text me-2"></i>Application Logs</h1>
+            <h1 class="h3">
+                <i class="bi bi-journal-text me-2" style="color: #6f42c1;"></i>Application Logs
+            </h1>
             <div>
                 <button id="refreshLogs" class="btn btn-sm btn-outline-info me-2">
                     <i class="bi bi-arrow-repeat"></i> Refresh
@@ -75,14 +104,13 @@
                     {{ logs if logs else 'No logs available' }}
                 </div>
             </div>
-        </div>
-        
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
-                <label class="form-check-label" for="autoRefresh">Auto-refresh every 5 seconds</label>
+            <div class="log-toolbar d-flex justify-content-between align-items-center">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                    <label class="form-check-label" for="autoRefresh">Auto-refresh</label>
+                </div>
+                <div class="text-muted small" id="lastUpdated"></div>
             </div>
-            <div class="text-muted small" id="lastUpdated"></div>
         </div>
     </div>
 
@@ -104,6 +132,14 @@
             logStatus.className = `badge bg-${isRunning ? 'success' : 'danger'}`;
         }
         
+        function highlightLogs(logs) {
+            return logs
+                .replace(/(INFO:)/g, '<span class="log-info">$1</span>')
+                .replace(/(WARNING:)/g, '<span class="log-warning">$1</span>')
+                .replace(/(ERROR:)/g, '<span class="log-error">$1</span>')
+                .replace(/(SUCCESS:)/g, '<span class="log-success">$1</span>');
+        }
+        
         function refreshLogs() {
             fetch('/status')
                 .then(response => response.json())
@@ -117,13 +153,17 @@
                     // Extract just the log content from the response
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#logContent')?.innerHTML || 'No logs available';
+                    let newContent = doc.querySelector('#logContent')?.innerHTML || 'No logs available';
+                    
+                    // Apply highlighting
+                    newContent = highlightLogs(newContent);
                     
                     // Check if we're at the bottom before updating
                     const wasAtBottom = isScrolledToBottom();
                     
                     logContent.innerHTML = newContent;
-                    logInfo.textContent = `Log file: output.log | ${newContent.split('\n').length} lines`;
+                    const lineCount = newContent.split('\n').length;
+                    logInfo.textContent = `Log file: output.log | ${lineCount} lines`;
                     lastUpdated.textContent = `Last updated: ${formatDateTime(new Date())}`;
                     
                     // If we were at the bottom or there's no scrollbar, stay at bottom
@@ -143,7 +183,7 @@
         
         function toggleAutoRefresh() {
             if (autoRefreshToggle.checked) {
-                autoRefreshInterval = setInterval(refreshLogs, 5000);
+                autoRefreshInterval = setInterval(refreshLogs, 3000);
             } else {
                 clearInterval(autoRefreshInterval);
             }

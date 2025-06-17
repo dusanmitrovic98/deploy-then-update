@@ -3,7 +3,8 @@ import subprocess
 import shutil
 import threading
 import logging
-from flask import Flask, render_template, request, jsonify, send_from_directory
+import signal
+from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
 app = Flask(__name__)
@@ -20,7 +21,14 @@ LOG_FILE = os.path.join(os.getcwd(), 'output.log')
 RUN_COMMAND_FILE = os.path.join(os.getcwd(), '.run_command')
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('manager.log')
+    ]
+)
 logger = logging.getLogger(__name__)
 
 # State tracking
@@ -56,18 +64,23 @@ def clone_repo():
     """Clone repository from the specified URL"""
     try:
         logger.info(f"Cloning repository from {REPO_URL}")
-        result = subprocess.run(['git', 'clone', REPO_URL, REPO_NAME], 
-                       check=True, 
-                       capture_output=True,
-                       text=True)
+        result = subprocess.run(
+            ['git', 'clone', REPO_URL, REPO_NAME], 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if result.returncode != 0:
+            logger.error(f"Clone failed: {result.stderr}")
+            return False, result.stderr
         logger.info("Repository cloned successfully")
         return True, result.stdout
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Clone failed: {e.stderr}")
-        return False, e.stderr
+    except Exception as e:
+        logger.error(f"Clone exception: {str(e)}")
+        return False, str(e)
 
 def run_process(custom_command=None):
-    """Run the process in the repository"""
+    """Run the process in the repository using shell execution"""
     global process, is_running, run_command
     
     if is_running:
@@ -86,36 +99,50 @@ def run_process(custom_command=None):
             save_run_command(run_command)
         
         logger.info(f"Starting process with command: {run_command}")
+        
+        # Use shell for complex commands
         with open(LOG_FILE, 'w') as log_file:
             process = subprocess.Popen(
-                run_command.split(),
+                run_command,
+                shell=True,
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
-                cwd=REPO_PATH
+                cwd=REPO_PATH,
+                start_new_session=True  # For proper process group management
             )
         is_running = True
-        logger.info("Process started successfully")
+        logger.info(f"Process started successfully with PID: {process.pid}")
         return True, "Process started"
     except Exception as e:
         logger.error(f"Error starting process: {str(e)}")
         return False, str(e)
 
 def stop_process():
-    """Stop the running process"""
+    """Stop the running process and its children"""
     global process, is_running
     
     if not is_running:
         return False, "No process running"
     
     try:
-        logger.info("Stopping process")
-        process.terminate()
+        logger.info(f"Stopping process with PID: {process.pid}")
+        
+        # Send SIGTERM to the entire process group
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass  # Process already terminated
+        
         try:
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             logger.warning("Process didn't terminate gracefully, forcing kill")
-            process.kill()
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             process.wait()
+        
         is_running = False
         logger.info("Process stopped successfully")
         return True, "Process stopped"
