@@ -97,6 +97,10 @@ def run_process(custom_command=None):
         if custom_command and custom_command.strip():
             run_command = custom_command.strip()
             save_run_command(run_command)
+        # Use existing command if not provided
+        elif not run_command.strip():
+            run_command = DEFAULT_RUN_COMMAND
+            save_run_command(run_command)
         
         logger.info(f"Starting process with command: {run_command}")
         
@@ -271,8 +275,8 @@ def view_logs():
 def get_status():
     return jsonify({
         'is_running': is_running,
-        'repo_exists': os.path.exists(REPO_PATH),
-        'run_command': run_command
+        'repo_exists': os.path.exists(REPO_PATH)
+        # Don't return run_command to prevent overwriting user input
     })
 
 if __name__ == '__main__':

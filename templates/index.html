@@ -31,12 +31,6 @@
             border: 1px solid var(--border-dark);
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.7);
         }
         
         .status-indicator {
@@ -61,12 +55,11 @@
             position: relative;
             overflow: hidden;
             min-width: 100px;
-            border: none;
         }
         
         .btn-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
         }
         
         .btn-action:active {
@@ -122,24 +115,19 @@
             opacity: 0.7;
             border-radius: 3px 3px 0 0;
         }
-        
-        .repo-name {
-            color: var(--accent);
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
     <div class="container py-4">
         <div class="row justify-content-center">
-            <div class="col-lg-10 col-xl-8">
+            <div class="col-lg-10">
                 <div class="card position-relative">
                     <div class="glow-effect"></div>
                     <div class="card-header bg-transparent border-0 pt-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <h1 class="h4 mb-0">
                                 <i class="bi bi-git me-2" style="color: var(--accent);"></i> 
-                                <span class="repo-name">{{ repo_name }}</span> Manager
+                                Repository Manager
                             </h1>
                             <div class="d-flex align-items-center bg-dark p-2 rounded">
                                 <span id="statusIndicator" class="status-indicator status-stopped"></span>
@@ -150,13 +138,10 @@
                     
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-diagram-2 me-2" style="color: var(--accent);"></i>
-                                <div>
-                                    <div class="text-muted small">Repository Status</div>
-                                    <div id="repoStatus" class="fw-bold">
-                                        {{ 'Repository exists' if repo_exists else 'Repository not cloned' }}
-                                    </div>
+                            <div>
+                                <h2 class="h5" id="repoName">{{ repo_name }}</h2>
+                                <div class="text-muted" id="repoStatus">
+                                    {{ 'Repository exists' if repo_exists else 'Repository not cloned' }}
                                 </div>
                             </div>
                             <a href="/logs" class="btn btn-outline-info">
@@ -167,7 +152,7 @@
                         <div class="mb-4">
                             <h5 class="mb-3"><i class="bi bi-terminal me-2"></i>Run Command</h5>
                             <form id="runCommandForm" class="d-flex gap-2">
-                                <div class="flex-grow-1 position-relative">
+                                <div class="flex-grow-1">
                                     <input type="text" class="form-control command-input py-2" id="runCommandInput" 
                                            name="run_command" value="{{ run_command }}" 
                                            placeholder="Enter run command (e.g. pip install -r requirements.txt && python app.py)" 
@@ -184,19 +169,19 @@
                         </div>
                         
                         <div class="d-flex flex-wrap gap-2 mb-4">
-                            <button class="btn btn-warning btn-action flex-fill" data-action="restart" id="restartBtn">
+                            <button class="btn btn-warning btn-action" data-action="restart" id="restartBtn">
                                 <i class="bi bi-arrow-repeat"></i> Restart
                                 <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
-                            <button class="btn btn-danger btn-action flex-fill" data-action="stop" id="stopBtn">
+                            <button class="btn btn-danger btn-action" data-action="stop" id="stopBtn">
                                 <i class="bi bi-stop-fill"></i> Stop
                                 <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
-                            <button class="btn btn-outline-danger btn-action flex-fill" data-action="remove" id="removeBtn">
+                            <button class="btn btn-outline-danger btn-action" data-action="remove" id="removeBtn">
                                 <i class="bi bi-trash"></i> Remove
                                 <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
-                            <button class="btn btn-info btn-action flex-fill" data-action="update" id="updateBtn">
+                            <button class="btn btn-info btn-action" data-action="update" id="updateBtn">
                                 <i class="bi bi-cloud-arrow-down"></i> Update
                                 <span class="spinner spinner-border spinner-border-sm"></span>
                             </button>
@@ -234,6 +219,10 @@
         const runCommandInput = document.getElementById('runCommandInput');
         const runBtn = document.getElementById('runBtn');
         
+        // Track input state
+        let isInputFocused = false;
+        let initialCommand = runCommandInput.value;
+        
         // Create toast function
         function showToast(message, success = true) {
             const toastContainer = document.querySelector('.toast-container');
@@ -266,7 +255,7 @@
             });
         }
         
-        // Update status display
+        // Update status display (without touching run command)
         function updateStatus() {
             fetch('/status')
                 .then(response => response.json())
@@ -282,15 +271,24 @@
                     repoStatus.textContent = data.repo_exists 
                         ? 'Repository exists' 
                         : 'Repository not cloned';
-                    
-                    if (data.run_command !== undefined) {
-                        runCommandInput.value = data.run_command;
-                    }
                 });
         }
         
         // Initial status update
         updateStatus();
+        
+        // Track input focus
+        runCommandInput.addEventListener('focus', () => {
+            isInputFocused = true;
+        });
+        
+        runCommandInput.addEventListener('blur', () => {
+            isInputFocused = false;
+            // Save command when user leaves field
+            if (runCommandInput.value.trim() !== initialCommand) {
+                initialCommand = runCommandInput.value;
+            }
+        });
         
         // Run command form submission
         runCommandForm.addEventListener('submit', function(e) {
@@ -363,7 +361,7 @@
             }
         });
         
-        // Periodically update status
+        // Periodically update status (without touching command input)
         setInterval(updateStatus, 5000);
     </script>
 </body>
