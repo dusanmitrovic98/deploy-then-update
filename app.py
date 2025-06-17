@@ -1,4 +1,3 @@
-# app.py
 import os
 import subprocess
 import shutil
@@ -16,8 +15,9 @@ load_dotenv()
 REPO_URL = os.environ.get('REPO_URL', 'https://github.com/your/repo.git')
 REPO_NAME = os.environ.get('REPO_NAME', 'deployed_repo')
 REPO_PATH = os.path.join(os.getcwd(), REPO_NAME)
-DEFAULT_RUN_COMMAND = 'python app.py'  # Default if not set by user
+DEFAULT_RUN_COMMAND = os.environ.get('RUN_COMMAND', 'python app.py')
 LOG_FILE = os.path.join(os.getcwd(), 'output.log')
+RUN_COMMAND_FILE = os.path.join(os.getcwd(), '.run_command')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,38 +27,64 @@ logger = logging.getLogger(__name__)
 process = None
 is_running = False
 operation_lock = threading.Lock()
-run_command = DEFAULT_RUN_COMMAND  # Store the current run command
+
+# Load or initialize run command
+def load_run_command():
+    """Load run command from file or use default"""
+    if os.path.exists(RUN_COMMAND_FILE):
+        try:
+            with open(RUN_COMMAND_FILE, 'r') as f:
+                return f.read().strip()
+        except Exception as e:
+            logger.error(f"Error loading run command: {str(e)}")
+    return DEFAULT_RUN_COMMAND
+
+def save_run_command(command):
+    """Save run command to file"""
+    try:
+        with open(RUN_COMMAND_FILE, 'w') as f:
+            f.write(command.strip())
+        return True
+    except Exception as e:
+        logger.error(f"Error saving run command: {str(e)}")
+        return False
+
+# Initialize run command
+run_command = load_run_command()
 
 def clone_repo():
     """Clone repository from the specified URL"""
     try:
         logger.info(f"Cloning repository from {REPO_URL}")
-        subprocess.run(['git', 'clone', REPO_URL, REPO_NAME], 
+        result = subprocess.run(['git', 'clone', REPO_URL, REPO_NAME], 
                        check=True, 
                        capture_output=True,
                        text=True)
         logger.info("Repository cloned successfully")
-        return True
+        return True, result.stdout
     except subprocess.CalledProcessError as e:
         logger.error(f"Clone failed: {e.stderr}")
-        return False
+        return False, e.stderr
 
 def run_process(custom_command=None):
     """Run the process in the repository"""
     global process, is_running, run_command
     
     if is_running:
-        return False
+        return False, "Process is already running"
     
     try:
         # Ensure the repository exists
         if not os.path.exists(REPO_PATH):
-            if not clone_repo():
-                return False
+            success, message = clone_repo()
+            if not success:
+                return False, message
         
         # Use custom command if provided
-        if custom_command:
-            run_command = custom_command
+        if custom_command and custom_command.strip():
+            run_command = custom_command.strip()
+            save_run_command(run_command)
+        
         logger.info(f"Starting process with command: {run_command}")
         with open(LOG_FILE, 'w') as log_file:
             process = subprocess.Popen(
@@ -69,17 +95,17 @@ def run_process(custom_command=None):
             )
         is_running = True
         logger.info("Process started successfully")
-        return True
+        return True, "Process started"
     except Exception as e:
         logger.error(f"Error starting process: {str(e)}")
-        return False
+        return False, str(e)
 
 def stop_process():
     """Stop the running process"""
     global process, is_running
     
     if not is_running:
-        return False
+        return False, "No process running"
     
     try:
         logger.info("Stopping process")
@@ -92,17 +118,18 @@ def stop_process():
             process.wait()
         is_running = False
         logger.info("Process stopped successfully")
-        return True
+        return True, "Process stopped"
     except Exception as e:
         logger.error(f"Error stopping process: {str(e)}")
-        return False
+        return False, str(e)
 
 def restart_process():
     """Restart the running process"""
     logger.info("Restarting process")
-    if stop_process():
+    success, message = stop_process()
+    if success:
         return run_process()
-    return False
+    return False, message
 
 def remove_repo():
     """Remove the repository folder"""
@@ -118,21 +145,24 @@ def remove_repo():
             logger.info(f"Removing repository folder: {REPO_PATH}")
             shutil.rmtree(REPO_PATH)
             logger.info("Repository removed successfully")
-            return True
-        return False
+            return True, "Repository removed"
+        return False, "Repository does not exist"
     except Exception as e:
         logger.error(f"Error removing repository: {str(e)}")
-        return False
+        return False, str(e)
 
 def update_repo():
     """Update repository by removing and re-cloning"""
     try:
         logger.info("Starting repository update")
         was_running = is_running
+        stop_message = ""
         
         # Stop if running
         if was_running:
-            stop_process()
+            success, stop_message = stop_process()
+            if not success:
+                return False, f"Failed to stop process: {stop_message}"
             
         # Remove existing repository
         if os.path.exists(REPO_PATH):
@@ -141,18 +171,21 @@ def update_repo():
         
         # Re-clone repository
         logger.info(f"Re-cloning repository from {REPO_URL}")
-        clone_result = clone_repo()
+        clone_success, clone_message = clone_repo()
+        
+        messages = [f"Update: {clone_message}"]
         
         # Restart if it was running
-        if was_running and clone_result:
+        if was_running and clone_success:
             logger.info("Restarting process after update")
-            run_result = run_process()
-            return clone_result and run_result
+            run_success, run_message = run_process()
+            messages.append(f"Restart: {run_message}")
+            return run_success, "\n".join(messages)
         
-        return clone_result
+        return clone_success, "\n".join(messages)
     except Exception as e:
         logger.error(f"Update failed: {str(e)}")
-        return False
+        return False, str(e)
 
 @app.route('/')
 def index():
@@ -174,34 +207,24 @@ def handle_action():
     with operation_lock:
         try:
             if action == 'run':
-                if run_process(custom_command):
-                    response.update(success=True, message='Repository started')
-                else:
-                    response.update(message='Failed to start repository')
+                success, message = run_process(custom_command)
+                response.update(success=success, message=message)
                     
             elif action == 'stop':
-                if stop_process():
-                    response.update(success=True, message='Process stopped')
-                else:
-                    response.update(message='Process was not running')
+                success, message = stop_process()
+                response.update(success=success, message=message)
                     
             elif action == 'restart':
-                if restart_process():
-                    response.update(success=True, message='Process restarted')
-                else:
-                    response.update(message='Restart failed')
+                success, message = restart_process()
+                response.update(success=success, message=message)
                     
             elif action == 'remove':
-                if remove_repo():
-                    response.update(success=True, message='Repository removed')
-                else:
-                    response.update(message='Nothing to remove or removal failed')
+                success, message = remove_repo()
+                response.update(success=success, message=message)
                     
             elif action == 'update':
-                if update_repo():
-                    response.update(success=True, message='Repository updated successfully')
-                else:
-                    response.update(message='Update failed')
+                success, message = update_repo()
+                response.update(success=success, message=message)
                     
         except Exception as e:
             logger.exception(f"Action '{action}' failed")
