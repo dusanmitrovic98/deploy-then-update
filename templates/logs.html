@@ -1,0 +1,129 @@
+<!-- templates/logs.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #f0f0f0;
+        }
+        
+        .log-container {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 70vh;
+            overflow-y: auto;
+            line-height: 1.5;
+            font-size: 14px;
+            border: 1px solid #30363d;
+        }
+        
+        .log-line {
+            border-bottom: 1px solid #30363d;
+            padding: 2px 0;
+        }
+        
+        .log-line:last-child {
+            border-bottom: none;
+        }
+        
+        .highlight {
+            background-color: rgba(255, 217, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3"><i class="bi bi-journal-text"></i> Application Logs</h1>
+            <div>
+                <button id="refreshLogs" class="btn btn-sm btn-outline-info me-2">
+                    <i class="bi bi-arrow-repeat"></i> Refresh
+                </button>
+                <a href="/" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="card shadow-lg mb-3">
+            <div class="card-body p-0">
+                <div class="log-container" id="logContent">
+                    {{ logs if logs else 'No logs available' }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+            <label class="form-check-label" for="autoRefresh">Auto-refresh every 5 seconds</label>
+        </div>
+    </div>
+
+    <script>
+        const logContent = document.getElementById('logContent');
+        const refreshButton = document.getElementById('refreshLogs');
+        const autoRefreshToggle = document.getElementById('autoRefresh');
+        let autoRefreshInterval;
+        
+        function refreshLogs() {
+            fetch('/logs?t=' + new Date().getTime())
+                .then(response => response.text())
+                .then(html => {
+                    // Extract just the log content from the response
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#logContent').innerHTML;
+                    
+                    // Check if we're at the bottom before updating
+                    const wasAtBottom = isScrolledToBottom();
+                    
+                    logContent.innerHTML = newContent;
+                    
+                    // If we were at the bottom or there's no scrollbar, stay at bottom
+                    if (wasAtBottom) {
+                        scrollToBottom();
+                    }
+                });
+        }
+        
+        function isScrolledToBottom() {
+            return logContent.scrollHeight - logContent.clientHeight <= logContent.scrollTop + 1;
+        }
+        
+        function scrollToBottom() {
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        function toggleAutoRefresh() {
+            if (autoRefreshToggle.checked) {
+                autoRefreshInterval = setInterval(refreshLogs, 5000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        // Initial load
+        refreshLogs();
+        
+        // Setup event listeners
+        refreshButton.addEventListener('click', refreshLogs);
+        autoRefreshToggle.addEventListener('change', toggleAutoRefresh);
+        
+        // Start auto-refresh
+        toggleAutoRefresh();
+        
+        // Scroll to bottom initially
+        scrollToBottom();
+    </script>
+</body>
+</html>

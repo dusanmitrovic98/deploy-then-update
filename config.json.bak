@@ -1,7 +1,0 @@
-{
-  "build": "echo hello > temp && pwd && ls",
-  "scripts": {
-    "echo": "echo hello world!"
-  },
-  "start": "python app.py"
-}

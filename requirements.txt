@@ -1,5 +1,3 @@
-# == Environment Dependencies ===
 Flask
-gitpython
+gunicorn
 python-dotenv
-# == Repository Dependencies ===

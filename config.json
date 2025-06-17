@@ -1,7 +1,0 @@
-{
-  "build": "echo hello world from build script!",
-  "scripts": {
-    "echo": "echo hello world from echo script!"
-  },
-  "start": "echo hello world from start script!"
-}

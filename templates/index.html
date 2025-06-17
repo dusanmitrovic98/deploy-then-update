@@ -1,0 +1,252 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repo Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-dark: #1e1e1e;
+            --border-dark: #333;
+            --text-light: #f0f0f0;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+        }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+        }
+        
+        .card {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-running {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        
+        .status-stopped {
+            background-color: var(--danger);
+        }
+        
+        .btn-action {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-action:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn-action:active {
+            transform: translateY(1px);
+        }
+        
+        .btn-action i {
+            margin-right: 8px;
+        }
+        
+        .spinner {
+            display: none;
+            margin-left: 8px;
+        }
+        
+        .action-loading .spinner {
+            display: inline-block;
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-dark">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h1 class="h4 mb-0"><i class="bi bi-git"></i> Repository Manager</h1>
+                            <div class="d-flex align-items-center">
+                                <span id="statusIndicator" class="status-indicator status-stopped"></span>
+                                <small id="statusText">Stopped</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h2 class="h5" id="repoName">{{ repo_name }}</h2>
+                                <div class="text-muted" id="repoStatus">
+                                    {{ 'Repository exists' if repo_exists else 'Repository not cloned' }}
+                                </div>
+                            </div>
+                            <a href="/logs" class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-journal-text"></i> View Logs
+                            </a>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-4">
+                            <button class="btn btn-success btn-action" data-action="run">
+                                <i class="bi bi-play-circle"></i> Run
+                            </button>
+                            <button class="btn btn-danger btn-action" data-action="stop">
+                                <i class="bi bi-stop-circle"></i> Stop
+                            </button>
+                            <button class="btn btn-warning btn-action" data-action="restart">
+                                <i class="bi bi-arrow-repeat"></i> Restart
+                            </button>
+                            <button class="btn btn-info btn-action" data-action="update">
+                                <i class="bi bi-cloud-arrow-down"></i> Update
+                            </button>
+                            <button class="btn btn-outline-danger btn-action" data-action="remove">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </div>
+                        
+                        <div class="progress mt-4" style="height: 4px; display: none;" id="globalProgress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 text-center text-muted small">
+                    <i class="bi bi-info-circle"></i> Update will completely remove and re-clone the repository
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast-container"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Elements
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const repoStatus = document.getElementById('repoStatus');
+        const globalProgress = document.getElementById('globalProgress');
+        
+        // Create toast function
+        function showToast(message, success = true) {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast align-items-center text-white bg-${success ? 'success' : 'danger'}`;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${success ? 'bi-check-circle' : 'bi-exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toastEl);
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+            
+            // Remove after hidden
+            toastEl.addEventListener('hidden.bs.toast', () => {
+                toastEl.remove();
+            });
+        }
+        
+        // Update status display
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_running) {
+                        statusIndicator.className = 'status-indicator status-running';
+                        statusText.textContent = 'Running';
+                    } else {
+                        statusIndicator.className = 'status-indicator status-stopped';
+                        statusText.textContent = 'Stopped';
+                    }
+                    
+                    repoStatus.textContent = data.repo_exists 
+                        ? 'Repository exists' 
+                        : 'Repository not cloned';
+                });
+        }
+        
+        // Initial status update
+        updateStatus();
+        
+        // Action handlers
+        document.querySelectorAll('.btn-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.dataset.action;
+                const btn = this;
+                
+                // Show global progress
+                globalProgress.style.display = 'block';
+                btn.classList.add('action-loading');
+                
+                fetch('/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message, true);
+                    } else {
+                        showToast(data.message || `Action ${action} failed`, false);
+                    }
+                    
+                    // Refresh status after action completes
+                    setTimeout(updateStatus, 1000);
+                })
+                .catch(error => {
+                    showToast(`Network error: ${error.message}`, false);
+                })
+                .finally(() => {
+                    // Hide progress after delay
+                    setTimeout(() => {
+                        globalProgress.style.display = 'none';
+                        btn.classList.remove('action-loading');
+                    }, 1000);
+                });
+            });
+        });
+        
+        // Periodically update status
+        setInterval(updateStatus, 5000);
+    </script>
+</body>
+</html>

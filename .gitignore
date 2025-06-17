@@ -6,25 +6,31 @@ __pycache__/
 # C extensions
 *.so
 
-# Virtual environments
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
-*.egg-info/
+downloads/
+eggs/
 .eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
 # Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+debug.log
 
 # Unit test / coverage reports
 htmlcov/
@@ -45,28 +51,33 @@ coverage.xml
 # pyenv
 .python-version
 
-# VS Code settings
-.vscode/
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
 
 # mypy
 .mypy_cache/
 .dmypy.json
+
+# Pyre type checker
 .pyre/
 
-# PyCharm
-.idea/
+# pytype static type analyzer
+.pytype/
 
-# macOS
-.DS_Store
+# Cython debug symbols
+cython_debug/
 
-# Windows
-Thumbs.db
-ehthumbs.db
+# VS Code settings
+.vscode/
 
+# Environment variables
 .env
+.env.*
 
-runtime.pid
-runtime.pids
-terminal.log
-
-runtime/
+# Local virtual environments
+venv/
+ENV/
+env/
